@@ -24,13 +24,13 @@
    - 2.3 &emsp;Micro services 示例 bookinfo 部署 ACK 环境
    - 2.4 &emsp;小结
    
-- 03 下一代 serverless 架构中的应用构建
+- 第三章 下一代 serverless 架构中的应用构建
    - 3.1 &emsp;配置 SAE CI 环境
    - 3.2 &emsp;Monolithic application 示例 Wordpress 部署 SAE 环境
    - 3.3 &emsp;Micro services 示例 bookinfo 部署 SAE 环境
    - 3.4 &emsp;小结
  
-- 04 可观测性建设体系的思考与实践
+- 第四章 可观测性建设体系的思考与实践
    - 4.1 &emsp;Web 监控指标配置
    - 4.2 &emsp;Backend 监控指标配置
    - 4.3 &emsp;通过 CRO 收集业务日志
@@ -38,21 +38,21 @@
    - 4.5 &emsp;智能告警
    - 4.6 &emsp;小结
 
-- 05 微服务治理的实践与挑战
+- 第五章 微服务治理的实践与挑战
    - 5.1 &emsp;简单的一次微服务环境下的灰度
    - 5.2 &emsp;微服务全链路灰度配置
    - 5.3 &emsp;保障服务的高可用
    - 5.4 &emsp;网关迁移实践
    - 5.5 &emsp;小结
 
-- 06 构建逻辑意义下的两地三中心架构
+- 第六章 构建逻辑意义下的两地三中心架构
    - 6.1 &emsp;应用是否具备容灾能力
    - 6.2 &emsp;流量转发选择
    - 6.3 &emsp;仲裁区配置
    - 6.4 &emsp;利用 GTM 部署两地三中心实践
    - 6.5 &emsp;小结
 
-- 07 结语：未来的架构与发展趋势
+- 终第七章 结语：未来的架构与发展趋势
    - 7.1 &emsp;应用的特性会是什么样？
    - 7.2 &emsp;附录
    
