@@ -11,50 +11,50 @@
   
 ## 目录｜Toc
 
-- 01 始·工具链
-   - 一、配置企业 CICD 工具链
-   - 二、镜像优化与制作
-   - 三、免密配置
-   - 四、ACR 配置镜像安全
-   - 五、小结
+- 第一章 始·工具链
+   - 1.1 &emsp;配置企业 CICD 工具链
+   - 1.2 &emsp;镜像优化与制作
+   - 1.3 &emsp;免密配置
+   - 1.4 &emsp;ACR 配置镜像安全
+   - 1.5 &emsp;小结
   
-- 02 在阿里云构建 kubernentes 
-   - 一、配置 ACK CI 环境
-   - 二、Monolithic application 示例 Wordpress 部署 ACK 环境
-   - 三、Micro services 示例 bookinfo 部署 ACK 环境
-   - 四、小结
+- 第二章 在阿里云构建 kubernentes 
+   - 2.1 &emsp;配置 ACK CI 环境
+   - 2.2 &emsp;Monolithic application 示例 Wordpress 部署 ACK 环境
+   - 2.3 &emsp;Micro services 示例 bookinfo 部署 ACK 环境
+   - 2.4 &emsp;小结
    
 - 03 下一代 serverless 架构中的应用构建
-   - 一、配置 SAE CI 环境
-   - 二、Monolithic application 示例 Wordpress 部署 SAE 环境
-   - 三、Micro services 示例 bookinfo 部署 SAE 环境
-   - 四、小结
+   - 3.1 &emsp;配置 SAE CI 环境
+   - 3.2 &emsp;Monolithic application 示例 Wordpress 部署 SAE 环境
+   - 3.3 &emsp;Micro services 示例 bookinfo 部署 SAE 环境
+   - 3.4 &emsp;小结
  
 - 04 可观测性建设体系的思考与实践
-   - 一、Web 监控指标配置
-   - 二、Backend 监控指标配置
-   - 三、通过 CRO 收集业务日志
-   - 四、Prometheus 配置项浅析
-   - 五、智能告警
-   - 六、小结
+   - 4.1 &emsp;Web 监控指标配置
+   - 4.2 &emsp;Backend 监控指标配置
+   - 4.3 &emsp;通过 CRO 收集业务日志
+   - 4.4 &emsp;Prometheus 配置项浅析
+   - 4.5 &emsp;智能告警
+   - 4.6 &emsp;小结
 
 - 05 微服务治理的实践与挑战
-   - 一、简单的一次微服务环境下的灰度
-   - 二、微服务全链路灰度配置
-   - 三、保障服务的高可用
-   - 四、网关迁移实践
-   - 五、小结
+   - 5.1 &emsp;简单的一次微服务环境下的灰度
+   - 5.2 &emsp;微服务全链路灰度配置
+   - 5.3 &emsp;保障服务的高可用
+   - 5.4 &emsp;网关迁移实践
+   - 5.5 &emsp;小结
 
 - 06 构建逻辑意义下的两地三中心架构
-   - 一、应用是否具备容灾能力
-   - 二、流量转发选择
-   - 三、仲裁区配置
-   - 四、利用 GTM 部署两地三中心实践
-   - 五、小结
+   - 6.1 &emsp;应用是否具备容灾能力
+   - 6.2 &emsp;流量转发选择
+   - 6.3 &emsp;仲裁区配置
+   - 6.4 &emsp;利用 GTM 部署两地三中心实践
+   - 6.5 &emsp;小结
 
 - 07 结语：未来的架构与发展趋势
-   - 一、应用的特性会是什么样？
-   - 二、附录
+   - 7.1 &emsp;应用的特性会是什么样？
+   - 7.2 &emsp;附录
    
 
 ## 许可｜License
