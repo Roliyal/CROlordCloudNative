@@ -37,12 +37,13 @@
 
 &emsp;&emsp;在 ACK 集群中用 helm 部署 Jenkins 并完成应用构建和部署
 
-前提条件
+#### 前提条件
 
-- 已创建Kubernetes集群。具体操作，请参见创建Kubernetes托管版集群。
-- 已通过kubectl连接到Kubernetes集群。具体操作，请参见通过kubectl工具连接集群。
+已创建Kubernetes集群。具体操作，请参见创建Kubernetes托管版集群。
+已通过kubectl连接到Kubernetes集群。具体操作，请参见通过kubectl工具连接集群。
 
-注意事项
+#### 注意事项
+
 
 | 事项       | 内容                                                   |
 | ---------- | ------------------------------------------------------ |
@@ -53,5 +54,77 @@
 | 数据持久化 | 需要配置存储卷以保证数据的持久化和可靠性               |
 | 安全设置   | 部署后需要进行安全设置，如开启安全认证、限制插件安装等 |
 
+#### 步骤一：部署 Jenkins
+
+````
+$ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
+$ chmod 700 get_helm.sh
+$ ./get_helm.sh
+[root@issac]# helm repo add jenkins https://charts.jenkins.io
+"jenkins" has been added to your repositories
+[root@issac ~]# helm repo update
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "jenkins" chart repository
+Update Complete. ⎈Happy Helming!⎈
+[root@issac~]#
+````
+
+- 部署 Helm
+  首先需要在 Kubernetes 集群中部署 Helm Tiller，以便后续安装 Helm Chart。可以使用以下命令创建一个 ServiceAccount 和 ClusterRoleBinding，并使用 Helm 安装 Tiller：
+
+```mermaid
+kubectl create serviceaccount crolord -n kube-system
+
+kubectl create clusterrolebinding crolord-cluster-rule --clusterrole=cluster-admin --serviceaccount=kube-system:crolord-cicd
+
+helm init --service-account=crolord --tiller-image=registry.cn-hangzhou.aliyuncs.com/google_containers/tiller:v2.16.1 --upgrade
+```
+
+添加 Jenkins Helm Chart 的 Repo
+接下来需要将 Jenkins Helm Chart 的 Repo 添加到 Helm 中：
+
+```
+helm repo add jenkins https://charts.jenkins.io
+helm repo update
+```
+
+配置 Jenkins Helm Chart 的 Values
+可以使用以下命令获取默认的 Jenkins Helm Chart 的 Values：
+
+```
+helm inspect values jenkins/jenkins > values.yaml
+
+```
+
+然后可以根据需要修改 values.yaml 中的配置项，例如存储卷的配置、管理员密码等等。
+
+以下是一些常用的配置项：
+
+jenkinsAdminPassword: Jenkins 管理员密码。
+persistence.enabled: 是否启用持久化存储。
+persistence.size: 持久化存储卷的大小。
+persistence.storageClass: 存储卷的 StorageClass。
+persistence.mountPath: 持久化存储卷挂载的路径。
+service.type: Jenkins Service 的类型，可以设置为 ClusterIP、NodePort 或 LoadBalancer。
+ingress.enabled: 是否启用 Ingress。
+ingress.hosts: Ingress 的域名列表。
+使用 Helm 安装 Jenkins
+最后，可以使用以下命令安装 Jenkins：
+
+```
+helm install jenkins jenkins/jenkins -f values.yaml
+```
+
+等待安装完成后，可以使用以下命令查看 Jenkins 的状态：
+
+```
+kubectl get pods -l "component=jenkins-master"
+```
+
+Jenkins 会自动创建一个初始管理员用户，可以使用管理员用户名 admin 和密码来登录 Jenkins。同时，可以使用 kubectl port-forward 命令将 Jenkins Service 暴露出来，以便访问 Jenkins Web UI：
+
+```
+kubectl port-forward svc/jenkins 8080:8080
+```
 
 ##### 方案二基于 ECS 服务器构建 Jenkins
