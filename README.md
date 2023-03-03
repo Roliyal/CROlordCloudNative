@@ -18,7 +18,7 @@
    - 1.4 &emsp;利用 ACR 镜像仓库构建镜像安全
    - 1.5 &emsp;小结
   
-- 第二章 阿里云 kubernentes 应用部署  
+- 第二章 阿里云 Kubernentes 应用部署  
    - 2.1 &emsp;配置 ACK CI 环境
    - 2.2 &emsp;Monolithic application 示例 Wordpress 部署 ACK 环境
    - 2.3 &emsp;Micro services 示例 bookinfo 部署 ACK 环境
