@@ -116,42 +116,26 @@ jenkins https://charts.jenkins.io
 创建 jenkins 配置文件
 ```yaml
 
-# values.yaml
-
-# 指定 Jenkins 部署的服务类型
+# jenkins_values.yaml
 service:
   type: ClusterIP
-
-# 指定 Jenkins 的域名
 jenkins:
   Master:
     HostName: devops.roliyal.com
-
-# 指定 Jenkins 的管理员用户名和密码
 adminUser: crolord
 adminKey: crolord123
-
-# 指定 Jenkins 数据的存储卷大小
 persistence:
   enabled: true
   size: 100Gi
-
-# 指定 Jenkins 镜像的版本
 image:
   tag: latest-jdk11
-
-# 将 Jenkins 数据挂载到指定的路径
 volumeMounts:
   - name: jenkins-data
     mountPath: /opt/jenkins
-
-# 指定 Jenkins 数据存储的持久卷
 volumes:
   - name: jenkins-data
     persistentVolumeClaim:
       claimName: jenkins-pvc
-
-# 添加 SSL 证书作为 ConfigMap
 sslCert:
   enabled: true
   certFileName: cert.crt
