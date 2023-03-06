@@ -250,7 +250,6 @@ sslCert:
   H74HIA/602OW0O3srV4SdpIkI/fOM8hNhh5Cy/w4GOVjE0o14GRy
   -----END RSA PRIVATE KEY-----
 
-
 ```
 
 然后可以根据需要修改 values.yaml 中的配置项，例如存储卷的配置、管理员密码等等。
