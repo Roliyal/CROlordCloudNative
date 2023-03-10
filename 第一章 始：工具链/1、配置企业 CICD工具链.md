@@ -33,9 +33,9 @@
 
 ## 部署一个企业级 Jenkins 工具链
 
-### 方案一基于阿里云 ACK（Kubernetes）构建 Jenkins
+### 方案一基于阿里云 ACK（Kubernetes）Helm构建 Jenkins
 
-&emsp;&emsp;在 ACK 集群中用 helm 部署 Jenkins 并完成应用构建和部署
+&emsp;&emsp;在 ACK 集群中用 helm 部署 Jenkins 环境
 
 #### 前提条件
 
@@ -45,17 +45,16 @@
 #### 注意事项
 
 
-| 事项       | 内容                                                   |
-| ---------- | ------------------------------------------------------ |
+| 事项       | 内容                                                 |
+| ---------- | ---------------------------------------------------- |
 | 版本兼容性 | Jenkins Helm 版本和 Kubernetes 版本、Helm 版本需要兼容 |
-| 资源分配   | 合理分配资源，如内存、CPU、存储空间等                  |
-| 配置参数   | 指定 Jenkins URL、Admin 用户名和密码等                 |
-| 插件安装   | 可以通过配置 Helm chart 的 value 文件进行安装          |
-| 数据持久化 | 需要配置存储卷以保证数据的持久化和可靠性               |
-| 安全设置   | 部署后需要进行安全设置，如开启安全认证、限制插件安装等 |
+| 资源分配   | 合理分配资源，如内存、CPU、存储空间等                |
+| 配置参数   | 指定 Jenkins URL、Admin 用户名和密码等               |
+| 插件安装   | 可以通过配置 Helm chart 的 value 文件进行安装        |
+| 数据持久化 | 需要配置存储卷以保证数据的持久化和可靠性             |
+| 安全设置   | 部署后需要进行安全设置，如开启安全认证、插件安装等 |
 
 #### 步骤一：部署 Jenkins
-
 
 - 部署 Helm
 
@@ -69,10 +68,13 @@ $ chmod 700 get_helm.sh
 $ ./get_helm.sh
 
 ```
+
 如果想直接执行安装，运行以下命令
+
 ```azure
 crul https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash。
 ```
+
 安装结果,并执行更新helm repo仓库Chart 中 Jenkins信息。
 
 ```
@@ -87,33 +89,38 @@ Hang tight while we grab the latest from your chart repositories...
 Update Complete. ⎈Happy Helming!⎈
 [root@issac~]#
 ```
+
 至此，Helm CLI 安装完成，后续相关命令则可参考[helm]:https://helm.sh/zh/docs/intro/install/
 
-
 如需要补全命令则需要追加命令补全
+
 ```
 helm completion bash > /etc/bash_completion.d/helm
 ```
-#### 步骤二：部署  helm chart Jenkins
-· 配置helm repo 地址以及更新本地索引
 
-```azure
+#### 步骤二：部署  helm chart Jenkins
+
+1.配置helm repo 地址以及更新本地索引
+
+```shell
 helm repo add jenkins https://charts.jenkins.io
 helm repo update
 ```
 使用以下命令获取是否正常返回安装结果
-```azure
+
+```shell
 helm repo list
 ```
+
 预期返回结果如下
+
 ````
 [root@issac ~]# helm repo list
-NAME    URL                      
+NAME    URL                    
 jenkins https://charts.jenkins.io
 [root@issac ~]#
 ````
-
-创建 jenkins 配置文件
+2. 创建 jenkins values 配置文件
 ```yaml
 
 # jenkins_values.yaml
@@ -143,10 +150,8 @@ sslCert:
 
 ```
 
-然后可以根据需要修改 values.yaml 中的配置项，例如存储卷的配置、管理员密码等等。
-
-以下是一些常用的配置项：
-
+提示：根据需要修改 values.yaml 中的配置项
+```shell
 jenkinsAdminPassword: Jenkins 管理员密码。
 persistence.enabled: 是否启用持久化存储。
 persistence.size: 持久化存储卷的大小。
@@ -155,21 +160,116 @@ persistence.mountPath: 持久化存储卷挂载的路径。
 service.type: Jenkins Service 的类型，可以设置为 ClusterIP、NodePort 或 LoadBalancer。
 ingress.enabled: 是否启用 Ingress。
 ingress.hosts: Ingress 的域名列表。
-
+```
+3. 部署 helm Jenkins
 ```
 helm install jenkins jenkins/jenkins -f values.yaml
 ```
 
-等待安装完成后，可以使用以下命令查看 Jenkins 的状态：
+4. 安装完成后，可以使用以下命令查看 Jenkins 的状态，以及配置 jenkins 初始化
 
 ```
 kubectl get pods -l "component=jenkins-master"
 ```
 
-Jenkins 会自动创建一个初始管理员用户，可以使用管理员用户名 admin 和密码来登录 Jenkins。同时，可以使用 kubectl port-forward 命令将 Jenkins Service 暴露出来，以便访问 Jenkins Web UI：
+##### 方案二基于 ECS 服务器构建 docker-compose-Jenkins
 
+- 部署 docker && docker-compose
+
+1. 安装Docker
+首先，您需要安装Docker。在Ubuntu系统中，可以通过运行以下命令来安装Docker：
 ```
-kubectl port-forward svc/jenkins 8080:8080
+sudo yum update
+sudo yum install docker
+```
+在其他操作系统中，请参考Docker官方文档以了解如何安装Docker。
+
+2. 配置Docker
+启动Docker服务并将其配置为在系统启动时自动启动。在Centos中，可以通过运行以下命令来完成此操作：
+```
+sudo systemctl start docker
+sudo systemctl enable docker
 ```
 
-##### 方案二基于 ECS 服务器构建 Jenkins
+3. 安装Docker Compose
+```shell
+sudo yum install docker-compose
+```
+4. 验证Docker和Docker Compose安装
+您可以通过运行以下命令来验证Docker和Docker Compose是否正确安装：
+```shell
+docker --version
+docker-compose --version
+```
+如果两个命令都返回版本信息，则说明Docker和Docker Compose已成功安装并准备好使用。
+
+- 部署docker-compose 环境下 jenkins
+1. 创建 Jenkins 目录以及对应 Jenkins 权限
+```shell
+mkdir -p /opt/jenkins/jenkins_data
+mkdir -p /opt/jenkins/certs
+sudo chown -R 1000:1000 /opt/jenkins/jenkins_deta
+sudo chown -R 1000:1000 /opt/jenkins/certs
+```
+
+2. 创建 docker-compose 配置 yaml 文件信息
+```yaml
+version: '3'
+
+services:
+  jenkins:
+    hostname: devops.roliyal.com //您的域名
+    image: jenkins/jenkins:latest
+    container_name: jenkins
+    restart: always
+    ports:
+      - "80:8080"
+      - "443:8443"
+    volumes:
+      - /opt/jenkins/jenkins_data:/var/jenkins_home
+      - /opt/jenkins/certs:/certs
+    user: "1000:1000"
+ 
+    environment:
+    # - JAVA_OPTS=-Djenkins.install.runSetupWizard=false 是否禁用初始化配置
+      - JENKINS_OPTS=--prefix=/jenkins
+      - JENKINS_OPTS=-Dorg.apache.commons.jelly.tags.fmt.timeZone=Asia/Shanghai
+      - JENKINS_OPTS=--httpsPort=8443 --httpsCertificate=/certs/roliyal.crt --httpsPrivateKey=/certs/roliyal.key
+    networks:
+      - jenkins-net
+    depends_on:
+      - jenkins-slave
+
+  jenkins-slave:
+    image: jenkins/jnlp-slave:alpine
+    container_name: jenkins-slave
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - jenkins-net
+
+volumes:
+  jenkins-data:
+
+networks:
+  jenkins-net:
+    driver: bridge
+```
+重要信息
+1. 配置 environment 时，需要注意certs目录，Jenkins_data目录位置是否与当前环境一致，否则会提示目录无法写入。
+2. 证书需要正确获取 key，crt 信息。
+
+3. 启动Jenkins容器：
+在终端中，导航到项目根目录并运行以下命令以启动Jenkins容器：
+```shell
+docker-compose up -d
+```
+此命令将创建并启动Jenkins容器。 -d参数告诉Docker在后台运行容器。
+
+4、获取Jenkins 初始密码
+```shell
+ docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+```
+
+此处 Jenkins 名为容器名，根据实际情况灵活变动。
+至此，整个Jenkins配置完成，后续插件配置使用以及 CICD 链路在后续章节展示。
