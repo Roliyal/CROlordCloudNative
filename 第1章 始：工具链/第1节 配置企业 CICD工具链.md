@@ -62,7 +62,7 @@
 
 您可以获取这个脚本并在本地执行。它良好的文档会让您在执行之前知道脚本都做了什么。
 
-```azure
+```shell
 $ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
 $ chmod 700 get_helm.sh
 $ ./get_helm.sh
@@ -71,8 +71,8 @@ $ ./get_helm.sh
 
 如果想直接执行安装，运行以下命令
 
-```azure
-crul https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash。
+```shell
+curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 ```
 
 安装结果,并执行更新helm repo仓库Chart 中 Jenkins信息。
@@ -100,7 +100,7 @@ helm completion bash > /etc/bash_completion.d/helm
 
 #### 步骤二：部署  helm chart Jenkins
 
-1.配置helm repo 地址以及更新本地索引
+1. 配置helm repo 地址以及更新本地索引
 
 ```shell
 helm repo add jenkins https://charts.jenkins.io
@@ -114,15 +114,16 @@ helm repo list
 
 预期返回结果如下
 
-````
+```shell
 [root@issac ~]# helm repo list
 NAME    URL                    
 jenkins https://charts.jenkins.io
 [root@issac ~]#
-````
-2. 创建 jenkins values 配置文件
-```yaml
+```
 
+2. 创建 jenkins values 配置文件
+
+```yaml
 # jenkins_values.yaml
 service:
   type: LoadBalancer
