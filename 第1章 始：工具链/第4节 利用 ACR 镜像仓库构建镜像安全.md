@@ -24,7 +24,8 @@
 | Tencent Cloud               | Tencent Hub                          | 支持镜像安全扫描                      | 支持数字签名 | Tencent Hub                              |
 | IBM Cloud                   | IBM Cloud Container Registry         | 支持漏洞扫描                          | 支持数字签名 | IBM Cloud Container Registry             |
 | Oracle Cloud Infrastructure | Oracle Cloud Infrastructure Registry | 支持镜像安全扫描                      | 支持数字签名 | Oracle Cloud Infrastructure Registry     |
-需要注意的是，不同云服务提供商的具体功能和特点可能会随时更新和变化，以上表格仅供参考。
+
+    需要注意的是，不同云服务提供商的具体功能和特点可能会随时更新和变化，以上表格仅供参考。
 
 阿里云容器镜像服务（Container Registry）提供了完整的镜像管理和安全功能，包括以下方面：
 
