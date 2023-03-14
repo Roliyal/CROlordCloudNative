@@ -15,16 +15,16 @@
 #### 选择阿里云容器镜像服务 ACR 的理由
 
 
-| 云服务提供商                                                                           | 容器镜像仓库                         | 镜像扫描                              | 镜像签名      | 容器镜像加速器                           |
-| -------------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------- | ------------- | ---------------------------------------- |
-| Amazon Web Services (AWS)                                                              | AWS Elastic Container Registry (ECR) | 支持 Amazon ECR Public 镜像的漏洞扫描 | 支持数字签名  | Amazon ECR Public                        |
-| Microsoft Azure                                                                        | Azure Container Registry (ACR)       | Azure Security Center 容器安全扫描    | 支持数字签名  | Azure Container Registry Geo-replication |
-| Google Cloud Platform (GCP)                                                            | Google Container Registry (GCR)      | 支持 Container Analysis 漏洞扫描      | 支持数字签名  | Google Container Registry                |
-| Alibaba Cloud                                                                          | Container Registry                   | 支持容器镜像安全扫描                  | 支持数字签名  | 全球加速                                 |
-| Tencent Cloud                                                                          | Tencent Hub                          | 支持镜像安全扫描                      | 支持数字签名 | Tencent Hub                              |
-| IBM Cloud                                                                              | IBM Cloud Container Registry         | 支持漏洞扫描                          | 支持数字签名  | IBM Cloud Container Registry             |
-| Oracle Cloud Infrastructure                                                            | Oracle Cloud Infrastructure Registry | 支持镜像安全扫描                      | 支持数字签名  | Oracle Cloud Infrastructure Registry     |
-| 需要注意的是，不同云服务提供商的具体功能和特点可能会随时更新和变化，以上表格仅供参考。 |                                      |                                       |               |                                          |
+| 云服务提供商                | 容器镜像仓库                         | 镜像扫描                              | 镜像签名     | 容器镜像加速器                           |
+| --------------------------- | ------------------------------------ | ------------------------------------- | ------------ | ---------------------------------------- |
+| Amazon Web Services (AWS)   | AWS Elastic Container Registry (ECR) | 支持 Amazon ECR Public 镜像的漏洞扫描 | 支持数字签名 | Amazon ECR Public                        |
+| Microsoft Azure             | Azure Container Registry (ACR)       | Azure Security Center 容器安全扫描    | 支持数字签名 | Azure Container Registry Geo-replication |
+| Google Cloud Platform (GCP) | Google Container Registry (GCR)      | 支持 Container Analysis 漏洞扫描      | 支持数字签名 | Google Container Registry                |
+| Alibaba Cloud               | Container Registry                   | 支持容器镜像安全扫描                  | 支持数字签名 | 全球加速                                 |
+| Tencent Cloud               | Tencent Hub                          | 支持镜像安全扫描                      | 支持数字签名 | Tencent Hub                              |
+| IBM Cloud                   | IBM Cloud Container Registry         | 支持漏洞扫描                          | 支持数字签名 | IBM Cloud Container Registry             |
+| Oracle Cloud Infrastructure | Oracle Cloud Infrastructure Registry | 支持镜像安全扫描                      | 支持数字签名 | Oracle Cloud Infrastructure Registry     |
+需要注意的是，不同云服务提供商的具体功能和特点可能会随时更新和变化，以上表格仅供参考。
 
 阿里云容器镜像服务（Container Registry）提供了完整的镜像管理和安全功能，包括以下方面：
 
