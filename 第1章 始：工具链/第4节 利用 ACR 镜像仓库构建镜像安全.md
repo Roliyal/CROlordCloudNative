@@ -44,70 +44,90 @@
 
 1. 使用容器镜像服务 ACE 扫描镜像安全
 
-#### 单镜像扫描
+#### 镜像扫描
 
-1. **登录**[容器镜像服务控制台](https://cr.console.aliyun.com/)。
+1. 为了进行漏洞测试，给出了一个 Dockerfile 示例，但请注意，这个示例是有意制造漏洞的，请不要将其用于生产环境或其他重要的环境。
 
-#### 批量镜像扫描
+```dockerfile
+FROM debian:buster-slim
 
-批量镜像扫描功能支持使用Trivy扫描引擎和云安全扫描引擎，区别如下：* Trivy扫描引擎：开源扫描引擎，支持检测系统漏洞和应用漏洞，不支持一键修复系统漏洞功能。
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    netcat \
+    unzip \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-* 云安全扫描引擎：阿里云自研的扫描引擎，支持检测系统漏洞、应用漏洞、基线检查和恶意样本，支持一键修复系统漏洞功能。
-  * 系统漏洞：提供镜像系统漏洞扫描及一键修复能力，为您提供安全可信的镜像。
-  * 应用漏洞：提供镜像应用漏洞扫描功能，为您扫描容器相关中间件上的漏洞，帮助您找到漏洞位置，便于您根据漏洞位置修复应用漏洞，创造安全的镜像运行环境。
-  * 基线检查：提供镜像安全基线检查功能，为您扫描容器资产中存在的基线安全风险，帮助您找到存在的基线安全风险位置，便于您根据位置修复基线安全风险。
-  * 恶意样本：提供容器恶意样本的检测能力，为您展示资产中存在的容器安全威胁，帮助您找到存在恶意样本的位置，便于您根据位置修复恶意样本，大幅降低您使用容器的安全风险。
+# 添加一个存在漏洞的服务，如 web 应用程序
+RUN apt-get update && apt-get install -y apache2 && \
+    sed -i 's/Listen 80/Listen 0.0.0.0:80/g' /etc/apache2/ports.conf
 
-1. **为企业版实例配置VPC网络。具体操作，请参见**[配置专有网络的访问控制](https://help.aliyun.com/document_detail/142199.htm#task1305 "当您的ECS位于专有网络时，需要为企业版实例配置专有网络的访问控制，才能建立ECS与企业版实例之间的连接。本文介绍如何为企业版实例配置专有网络的访问控制。")。
-   您需要为企业版实例配置VPC网络，批量扫描镜像功能需要使用该VPC网络扫描镜像。首次使用云安全扫描引擎需要访问[云安全后台](https://yundun.console.aliyun.com/)，首次访问会提示您创建AliyunServiceRoleForSas系统角色。
+# 添加一个存在漏洞的 SSH 服务
+RUN apt-get update && apt-get install -y openssh-server && \
+    sed -i 's/PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config && \
+    echo 'root:root' | chpasswd
 
-   **说明** 如果您已为企业版实例配置VPC网络，无需执行此步骤。
-2. **登录**[容器镜像服务控制台](https://cr.console.aliyun.com/)。
-3. **在顶部菜单栏，选择所需地域。**
-4. **在**实例列表**页面单击目标企业版实例。**
-5. **在企业版实例管理页面选择**安全可信 > **镜像扫描**。
-6. **选择扫描引擎。**
+# 安装一个存在漏洞的版本的 OpenSSL
+RUN apt-get update && apt-get install -y openssl=1.1.1d-0+deb10u6
 
-   * 设置扫描引擎为**Trivy扫描引擎**
+# 添加一个存在漏洞的数据库服务
+RUN apt-get update && apt-get install -y mariadb-server && \
+    sed -i 's/127.0.0.1/0.0.0.0/g' /etc/mysql/mariadb.conf.d/50-server.cnf && \
+    echo '[mysqld]' >> /etc/mysql/mariadb.conf.d/50-server.cnf && \
+    echo 'skip-name-resolve' >> /etc/mysql/mariadb.conf.d/50-server.cnf && \
+    echo 'init_connect="SET NAMES utf8"' >> /etc/mysql/mariadb.conf.d/50-server.cnf && \
+    echo 'character-set-server=utf8' >> /etc/mysql/mariadb.conf.d/50-server.cnf && \
+    echo 'collation-server=utf8_general_ci' >> /etc/mysql/mariadb.conf.d/50-server.cnf && \
+    /etc/init.d/mysql start && \
+    mysql -u root -e "CREATE DATABASE testdb; GRANT ALL PRIVILEGES ON testdb.* TO 'testuser'@'%' IDENTIFIED BY 'testpassword'; FLUSH PRIVILEGES;"
 
-     * 如果您之前未购买云安全扫描引擎，则**镜像扫描**页面右上角默认使用Trivy扫描引擎。
-     * 如果您已购买云安全中心里的镜像扫描服务，Trivy扫描引擎就会切换成云安全扫描引擎，您需要在**镜像扫描**页面右上角单击**云安全扫描引擎**右侧的**切换**，单击**Trivy扫描引擎**，在**提示**对话框单击**确定**。
-   * 设置扫描引擎为**云安全扫描引擎**如果您已购买云安全扫描引擎，则**镜像扫描**页面默认使用云安全引擎，您无需进行其他操作。如果您未购买云安全扫描引擎，您需要进行以下操作：
+# 开放容器内的端口
+EXPOSE 80 22 3306
 
-     1. 授予云安全中心调用ACR的OpenAPI权限。
+CMD ["/bin/bash"]
 
-        1. 单击[云资源访问授权](https://ram.console.aliyun.com/role/authorize?request=%7B%22ReturnUrl%22%3A%22https%3A%2F%2Fcr.console.aliyun.com%2F%22%2C%22Services%22%3A%5B%7B%22Roles%22%3A%5B%7B%22RoleName%22%3A%22AliyunContainerRegistryAccessingSASRole%22%2C%22TemplateId%22%3A%22AliyunContainerRegistryAccessingSASRole%22%7D%5D%2C%22Service%22%3A%22ContainerRegistry%22%7D%5D%7D)。
-        2. 在**云资源访问授权**页面单击**同意授权**。
-     2. 在**镜像扫描**页面**扫描信息**区域单击立即**升级云安全引擎**。
-     3. 设置**安全扫描**为**云安全扫描引擎**，选中**容器镜像服务协议**，其他参数根据实际情况设置，单击**立即购买**，然后完成支付。返回**镜像扫描**页面，可以看到页面右上角已默认切换为云安全引擎。
+```
 
-        **说明** 购买云安全扫描引擎后，您可以在**镜像扫描**页面**扫描信息**区域单击**设置**，在**提示**对话框选中**同步**，然后单击**确定**。启用同步功能后，容器镜像服务将自动同步实例删除、镜像推送、镜像删除、镜像仓库删除的消息至云安全中心。
-7. **创建扫描规则。**
+根据以上 dockerfile 示例我们可以上传到对应的 容器镜像服务ACR 仓库中，以下命令则提示内容
 
-   1. **在**镜像扫描**页面单击**创建规则**。**
-   2. **在**扫描规则**配置向导中输入**规则名称**，设置**扫描范围**，然后单击**下一步**。**
-      支持按照命名空间和仓库对镜像进行安全扫描：* 按照命名空间扫描：选择**命名空间**，输入镜像版本过滤的正则规则。
+```shell
+docker build . 
+docker tag {images ID} {repo}/tag
+docker push {repo}/tag
+```
 
-      * 按照仓库扫描：选择**命名空间**、**仓库**，输入镜像版本过滤的正则规则。
-   3. **可选：**在**事件通知**配置向导中设置通知方式。
-      支持钉钉、HTTP和HTTPS通知：* 钉钉：设置**通知方式**为**钉钉**，然后输入Webhook地址和加签密钥。
+注意事项
+1. docker 是否登录正确镜像仓库
+2. 容器镜像服务ACR 版本是否企业版
+预期效果
+![img.png](img.png)
 
-      * HTTP：设置**通知方式**为**HTTP**，然后输入HTTP地址。
-      * HTTPS：设置**通知方式**为**HTTPS**，然后输入HTTPS地址。
+注意镜像修复依赖于包的发布者提供新的修复版本，如果包的发布者没有修复这个漏洞那么就无法修复。
+2. 镜像扫描能力
 
-      镜像扫描成功后，会发送通知给钉钉、HTTP或HTTPS。
-   4. **单击**创建**。**
-8. **手动触发镜像扫描。**
 
-   **说明** 扫描规则创建完成后，支持手动和自动触发镜像扫描。自动触发指只要镜像推送或构建成功，就会自动触发镜像扫描。
+| 特点          | 云安全                                 | Trivy                                  |
+| ------------- | -------------------------------------- | -------------------------------------- |
+| 开发商        | 阿里云                                 | Aqua Security                          |
+| 扫描方式      | 基于云端                               | 基于本地                               |
+| 镜像数量限制  | 无限制                                 | 无限制                                 |
+| 扫描速度      | 中等                                   | 较快                                   |
+| 检测类型      | 系统漏洞、应用漏洞、基线检查、恶意样本 | 系统漏洞、应用漏洞                     |
+| 检测结果      | 包含 CVE、漏洞描述、修复建议等信息     | 包含漏洞描述、CVSS评分、影响版本等信息 |
+| 修复能力      | 支持一键修复系统漏洞                   | 不支持                                 |
+| 支持语言/框架 | 支持多种语言和框架                     | 主要支持Docker和OCI镜像                |
+| 容器化        | 支持在阿里云容器服务、Kubernetes中使用 | 支持在Docker、Kubernetes中使用         |
 
-   1. **在**镜像扫描**页面单击目标规则右侧**操作**列下的**立即扫描**。**
-   2. **在弹出的对话框单击**确定**。**
-      在**任务列表**区域看到扫描任务的**扫描状态**显示**扫描完成**，说明镜像扫描成功。
-9. **查看扫描结果。**
+    需要注意的是，Trivy 和云安全都只是容器镜像安全扫描的一种工具，不能完全保证镜像的安全。使用这些工具时，还需要注意镜像来源、使用最新的基础镜像、定期更新、使用最小化的镜像等安全最佳实践。
+2. 镜像访问控制
 
-   1. **在**镜像扫描**页面**任务列表**区域单击目标任务右侧**操作**列下的**查看任务**。**
-   2. **在**任务详情**页面单击任务右侧**操作**列下的**查看详情**。**
-      您可以在**安全扫描**页面查看扫描结果，包括安全漏洞详细信息。
+1. 配置企业级 VPC 访问控制
+![img_1.png](img_1.png)
 
-      **说明** 如果您设置的扫描规则中包含多个镜像，则**任务详情**页面会存在多条任务，您可以查看任意一个任务的镜像扫描结果。
+上图示例中，显示为内网ACR VPC地址（crolord-registry-vpc.cn-hongkong.cr.aliyuncs.com）配置并将VPC内域名将解析至此IP。
+
+    ACR企业高级版支持最多可以添加7条专有网络，此功能有助于区分 UAT、PRO、TEST 环境需求。公网不建议放开，特殊场景除外，当然您可以为公网环境配置白名单，适用于特定环境需要公网拉取、组织环境要求等。
+3. 镜像签名
+
+1. 
