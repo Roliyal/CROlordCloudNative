@@ -89,7 +89,7 @@ CMD ["/bin/bash"]
 
 ```
 
-根据以上 dockerfile 示例我们可以上传到对应的 容器镜像服务ACR 仓库中，以下命令则提示内容
+根据以上 Dockerfile 示例我们可以上传到对应的 容器镜像服务ACR 仓库中，以下命令则提示内容
 
 ```shell
 docker build . 
@@ -97,15 +97,14 @@ docker tag {images ID} {repo}/tag
 docker push {repo}/tag
 ```
 
-    注意事项
-    1. docker 是否登录正确镜像仓库
-    2. 容器镜像服务ACR 版本是否企业版
+注意事项
 
-预期效果
-![img.png](img.png)
+- docker 是否登录正确镜像仓库 
+- 容器镜像服务ACR 版本是否企业版
+   预期效果
+   ![img.png](images/img.png)
 
-    提示镜像修复依赖于包的发布者提供新的修复版本，如果包的发布者没有修复这个漏洞那么就无法修复。
-
+提示镜像修复依赖于包的发布者提供新的修复版本，如果包的发布者没有修复这个漏洞那么就无法修复。
 3. 镜像扫描能力
 
 
@@ -124,10 +123,40 @@ docker push {repo}/tag
 需要注意的是，Trivy 和云安全都只是容器镜像安全扫描的一种工具，不能完全保证镜像的安全。使用这些工具时，还需要注意镜像来源、使用最新的基础镜像、定期更新、使用最小化的镜像等安全最佳实践。
 2. 镜像访问控制
 3. 配置企业级 VPC 访问控制
-   ![img_1.png](img_1.png)
+![img_1.png](images/img_1.png)
 
 上图示例中，显示为内网ACR VPC地址（crolord-registry-vpc.cn-hongkong.cr.aliyuncs.com）配置并将VPC内域名将解析至此IP。
 
-    ACR企业高级版支持最多可以添加7条专有网络，此功能有助于区分 UAT、PRO、TEST 环境需求。公网不建议放开，特殊场景除外，当然您可以为公网环境配置白名单，适用于特定环境需要公网拉取、组织环境要求等。
-
+ACR企业高级版支持最多可以添加7条专有网络，此功能有助于区分 UAT、PRO、TEST 环境需求。公网不建议放开，特殊场景除外，当然您可以为公网环境配置白名单，适用于特定环境需要公网拉取、组织环境要求等。
 3. 镜像签名
+
+## 前提条件
+
+* 已创建企业版实例，且您的实例必须为高级版。具体操作，请参见[创建企业版实例](https://help.aliyun.com/document_detail/142168.htm#task488)。
+* 已开通密钥管理服务，具体操作，请参见[开通密钥管理服务](https://help.aliyun.com/document_detail/153781.htm#task-2418494)。
+
+#### 创建非对称密钥
+
+1. [密钥管理服务控制台](https://common-buy.aliyun.com/?spm=a2c4g.11186623.0.0.5ed6224cmKPgip&commodityCode=kms#/open)。
+   容器签名功能需要非对称密钥算法的支持，创建KMS密钥时，密钥类型需选择RSA，密钥用途需选择SIGN或VERIFY。
+   ![KMS.png](images/KMS.png)
+
+#### 授权容器镜像服务使用KMS密钥
+
+您需要进入 RAM 控制台，创建一个名为 AliyunContainerRegistryKMSRole 的 RAM 角色，并在该角色中添加自定义策略。具体步骤如下：
+
+- 登录 RAM 控制台。
+- 创建名为 AliyunContainerRegistryKMSRole 的 RAM 角色。
+- 在权限策略管理中新建名为 AliyunContainerRegistryKMSRolePolicy 的自定义权限策略。
+- 给角色 AliyunContainerRegistryKMSRole 添加权限，选择自定义策略并选择刚才创建的 AliyunContainerRegistryKMSRolePolicy 策略。
+- 修改该角色的信任策略，确保该角色具有所需的权限。
+![img_2.png](images/img_2.png)
+
+#### 配置证明者及验签策略
+
+- 登录云安全中心创建证明者并关联KMS密钥，用于容器镜像加签。
+- 在容器镜像服务控制台中选择实例列表，进入企业版实例管理页面并选择镜像加签。然后添加加签规则。
+- 在加签规则配置向导中选择证明者关联KMS密钥并设置加签规则，包括加签算法、加签范围和触发方式。
+![img_3.png](images/img_3.png)
+以及最终效果。接下来章节中，我们将带入整个部署生产环境中。
+![img_4.png](images/img_4.png)
