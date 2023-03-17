@@ -99,12 +99,16 @@ docker push {repo}/tag
 
 注意事项
 
-- docker 是否登录正确镜像仓库 
+- docker 是否登录正确镜像仓库
 - 容器镜像服务ACR 版本是否企业版
-   预期效果
-   ![img.png](images/img.png)
+  预期效果
+  <div align="center"> 
+
+  ![img.png](images/img.png) 
+  </div>
 
 提示镜像修复依赖于包的发布者提供新的修复版本，如果包的发布者没有修复这个漏洞那么就无法修复。
+
 3. 镜像扫描能力
 
 
@@ -139,7 +143,10 @@ ACR企业高级版支持最多可以添加7条专有网络，此功能有助于�
 
 1. [密钥管理服务控制台](https://common-buy.aliyun.com/?spm=a2c4g.11186623.0.0.5ed6224cmKPgip&commodityCode=kms#/open)。
    容器签名功能需要非对称密钥算法的支持，创建KMS密钥时，密钥类型需选择RSA，密钥用途需选择SIGN或VERIFY。
-   ![KMS.png](images/KMS.png)
+  <div align="center"> 
+
+![KMS.png](images/KMS.png)
+  </div>
 
 #### 授权容器镜像服务使用KMS密钥
 
@@ -150,13 +157,21 @@ ACR企业高级版支持最多可以添加7条专有网络，此功能有助于�
 - 在权限策略管理中新建名为 AliyunContainerRegistryKMSRolePolicy 的自定义权限策略。
 - 给角色 AliyunContainerRegistryKMSRole 添加权限，选择自定义策略并选择刚才创建的 AliyunContainerRegistryKMSRolePolicy 策略。
 - 修改该角色的信任策略，确保该角色具有所需的权限。
-![img_2.png](images/img_2.png)
+  <div align="center"> 
 
+  ![img_2.png](images/img_2.png)
+  </div>
 #### 配置证明者及验签策略
 
 - 登录云安全中心创建证明者并关联KMS密钥，用于容器镜像加签。
 - 在容器镜像服务控制台中选择实例列表，进入企业版实例管理页面并选择镜像加签。然后添加加签规则。
 - 在加签规则配置向导中选择证明者关联KMS密钥并设置加签规则，包括加签算法、加签范围和触发方式。
+  <div align="center"> 
+ 
 ![img_3.png](images/img_3.png)
-以及最终效果。接下来章节中，我们将带入整个部署生产环境中。
-![img_4.png](images/img_4.png)
+</div>
+  以及最终效果。接下来章节中，我们将带入整个部署生产环境中。
+  <div align="center"> 
+
+  ![img_4.png](images/img_4.png)
+<div>
