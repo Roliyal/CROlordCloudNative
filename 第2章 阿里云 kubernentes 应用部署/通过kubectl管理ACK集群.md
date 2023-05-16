@@ -1,6 +1,6 @@
-#配置通过Kubectl管理ACK集群
+# 配置通过Kubectl管理ACK集群
 
-###环境准备
+### 环境准备
 1，在本地机器上安装和配置 kubectl 命令行工具，以便连接到 ACK 集群。  
 执行以下命令下载kubectl最新版本：
 ~~~shell
@@ -39,7 +39,7 @@ kubectl version --client
 vi  $HOME/.kube/config
 ~~~
 在ACK控制台集群连接信息中选择公网访问，将集群凭证复制到$HOME/.kube/config 文件下
->![img_4.png](images/ACK Kube_config.png)
+
 
 6，安装helm
 ~~~shell
