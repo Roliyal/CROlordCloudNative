@@ -260,6 +260,7 @@ services:
  
     environment:
       - JENKINS_OPTS=--prefix=/jenkins -Dorg.apache.commons.jelly.tags.fmt.timeZone=Asia/Shanghai --httpsPort=8443 --httpsCertificate=/certs/roliyal.crt --httpsPrivateKey=/certs/roliyal.key
+      - JENKINS_UC=https://mirrors.aliyun.com/jenkins/updates/update-center.json
     networks:
       - jenkins-net
     depends_on:
