@@ -259,10 +259,7 @@ services:
     user: "1000:1000"
  
     environment:
-    # - JAVA_OPTS=-Djenkins.install.runSetupWizard=false 是否禁用初始化配置
-      - JENKINS_OPTS=--prefix=/jenkins
-      - JENKINS_OPTS=-Dorg.apache.commons.jelly.tags.fmt.timeZone=Asia/Shanghai
-      - JENKINS_OPTS=--httpsPort=8443 --httpsCertificate=/certs/roliyal.crt --httpsPrivateKey=/certs/roliyal.key
+      - JENKINS_OPTS=--prefix=/jenkins -Dorg.apache.commons.jelly.tags.fmt.timeZone=Asia/Shanghai --httpsPort=8443 --httpsCertificate=/certs/roliyal.crt --httpsPrivateKey=/certs/roliyal.key
     networks:
       - jenkins-net
     depends_on:
