@@ -45,14 +45,14 @@
 #### 注意事项
 
 
-| 事项       | 内容                                                 |
-| ---------- | ---------------------------------------------------- |
+| 事项       | 内容                                                   |
+| ---------- | ------------------------------------------------------ |
 | 版本兼容性 | Jenkins Helm 版本和 Kubernetes 版本、Helm 版本需要兼容 |
-| 资源分配   | 合理分配资源，如内存、CPU、存储空间等                |
-| 配置参数   | 指定 Jenkins URL、Admin 用户名和密码等               |
-| 插件安装   | 可以通过配置 Helm chart 的 value 文件进行安装        |
-| 数据持久化 | 需要配置存储卷以保证数据的持久化和可靠性             |
-| 安全设置   | 部署后需要进行安全设置，如开启安全认证、插件安装等 |
+| 资源分配   | 合理分配资源，如内存、CPU、存储空间等                  |
+| 配置参数   | 指定 Jenkins URL、Admin 用户名和密码等                 |
+| 插件安装   | 可以通过配置 Helm chart 的 value 文件进行安装          |
+| 数据持久化 | 需要配置存储卷以保证数据的持久化和可靠性               |
+| 安全设置   | 部署后需要进行安全设置，如开启安全认证、插件安装等     |
 
 #### 步骤一：部署 Jenkins
 
@@ -106,6 +106,7 @@ helm completion bash > /etc/bash_completion.d/helm
 helm repo add jenkins https://charts.jenkins.io
 helm repo update
 ```
+
 使用以下命令获取是否正常返回安装结果
 
 ```shell
@@ -116,7 +117,7 @@ helm repo list
 
 ```shell
 [root@issac ~]# helm repo list
-NAME    URL                    
+NAME    URL                  
 jenkins https://charts.jenkins.io
 [root@issac ~]#
 ```
@@ -152,6 +153,7 @@ sslCert:
 ```
 
 提示：根据需要修改 values.yaml 中的配置项
+
 ```shell
 jenkinsAdminPassword: Jenkins 管理员密码。
 persistence.enabled: 是否启用持久化存储。
@@ -162,7 +164,9 @@ service.type: Jenkins Service 的类型，可以设置为 ClusterIP、NodePort �
 ingress.enabled: 是否启用 Ingress。
 ingress.hosts: Ingress 的域名列表。
 ```
+
 3. 部署 helm Jenkins
+
 ```
 helm install jenkins jenkins/jenkins -f values.yaml
 ```
@@ -178,42 +182,65 @@ kubectl get pods -l "component=jenkins-master"
 - 部署 docker && docker-compose
 
 1. 安装Docker
-首先，您需要安装Docker。在Ubuntu系统中，可以通过运行以下命令来安装Docker：
+   首先，您需要安装Docker。在 Centos系统中，可以通过运行以下命令来安装Docker：
+
 ```
 sudo yum update
 sudo yum install docker
 ```
+
 在其他操作系统中，请参考Docker官方文档以了解如何安装Docker。
 
 2. 配置Docker
-启动Docker服务并将其配置为在系统启动时自动启动。在Centos中，可以通过运行以下命令来完成此操作：
+   启动Docker服务并将其配置为在系统启动时自动启动。在Centos中，可以通过运行以下命令来完成此操作：
+
 ```
+
+sudo mkdir -p /etc/docker
+sudo tee /etc/docker/daemon.json <<-'EOF'
+{
+  "registry-mirrors": ["https://此处应为您的镜像加速地址.com"]
+}
+EOF
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+
 sudo systemctl start docker
 sudo systemctl enable docker
 ```
 
 3. 安装Docker Compose
+
 ```shell
 sudo yum install docker-compose
 ```
+
 4. 验证Docker和Docker Compose安装
-您可以通过运行以下命令来验证Docker和Docker Compose是否正确安装：
+   您可以通过运行以下命令来验证Docker和Docker Compose是否正确安装：
+
 ```shell
 docker --version
 docker-compose --version
 ```
+
 如果两个命令都返回版本信息，则说明Docker和Docker Compose已成功安装并准备好使用。
 
 - 部署docker-compose 环境下 jenkins
-1. 创建 Jenkins 目录以及对应 Jenkins 权限
+
+1. 创建 Jenkins 目录以及对应 Jenkins 权限,并配置 https 证书
+
 ```shell
 mkdir -p /opt/jenkins/jenkins_data
 mkdir -p /opt/jenkins/certs
-sudo chown -R 1000:1000 /opt/jenkins/jenkins_deta
+sudo chown -R 1000:1000 /opt/jenkins/jenkins_data
 sudo chown -R 1000:1000 /opt/jenkins/certs
+
+openssl req -x509 -newkey rsa:4096 -keyout /opt/jenkins/certs/roliyal.key -out /opt/jenkins/certs/roliyal.crt -days 365 -nodes
+
 ```
 
 2. 创建 docker-compose 配置 yaml 文件信息
+
 ```yaml
 version: '3'
 
@@ -256,18 +283,22 @@ networks:
   jenkins-net:
     driver: bridge
 ```
+
 重要信息
+
 1. 配置 environment 时，需要注意certs目录，Jenkins_data目录位置是否与当前环境一致，否则会提示目录无法写入。
 2. 证书需要正确获取 key，crt 信息。
-
 3. 启动Jenkins容器：
-在终端中，导航到项目根目录并运行以下命令以启动Jenkins容器：
+   在终端中，导航到项目根目录并运行以下命令以启动Jenkins容器：
+
 ```shell
 docker-compose up -d
 ```
+
 此命令将创建并启动Jenkins容器。 -d参数告诉Docker在后台运行容器。
 
 4、获取Jenkins 初始密码
+
 ```shell
  docker exec jenkins cat /var/jenkins_home/secrets/initialAdminPassword
 ```
