@@ -21,23 +21,23 @@
 
 ### Argo CD 和 Jenkins 中选择 Jenkins 的理由
 
-**用途和焦点：**
+##### 用途和焦点:
 
 &emsp;&emsp; Argo CD：Argo CD主要用于管理Kubernetes应用程序的生命周期。它基于GitOps的理念，通过将应用程序的配置和状态定义存储在Git版本控制系统中，并通过自动化来保持实际状态与期望状态的一致性。Argo CD专注于持续部署和管理云原生应用程序在Kubernetes集群上的运行。
-Jenkins：Jenkins是一个用于持续集成和持续交付的自动化工具。它的主要用途是帮助开发团队在代码提交后自动构建、测试和部署应用程序，以实现快速、高质量的软件交付。
-**环境：**
+&emsp;&emsp; Jenkins：Jenkins是一个用于持续集成和持续交付的自动化工具。它的主要用途是帮助开发团队在代码提交后自动构建、测试和部署应用程序，以实现快速、高质量的软件交付。
+##### 环境：
 
 &emsp;&emsp; Argo CD：Argo CD主要适用于Kubernetes环境，特别是用于部署和管理Kubernetes应用程序。
-Jenkins：Jenkins是一个通用的自动化工具，可以用于构建和部署各种类型的应用程序，不仅限于Kubernetes环境。
-**方式：**
+&emsp;&emsp; Jenkins：Jenkins是一个通用的自动化工具，可以用于构建和部署各种类型的应用程序，不仅限于Kubernetes环境。
+##### 方式：
 
 &emsp;&emsp; Argo CD：Argo CD采用GitOps的方式，通过Git仓库中的定义来持续监测和对比Kubernetes集群中的实际状态与期望状态，并自动进行部署、更新和回滚等操作。
-Jenkins：Jenkins采用持续集成和持续交付的方式，通过自动化工作流来实现构建、测试和部署过程。
-**界面：**
+&emsp;&emsp; Jenkins：Jenkins采用持续集成和持续交付的方式，通过自动化工作流来实现构建、测试和部署过程。
+##### 界面：
 
 &emsp;&emsp; Argo CD：Argo CD提供了直观的Web界面，方便用户查看应用程序的状态、历史版本和同步状态。
 &emsp;&emsp; Jenkins：Jenkins也提供了Web界面，但更加灵活和定制化，用户可以根据需求配置和管理不同的构建和部署流程。
-&emsp;&emsp; 综上所述，Argo CD和Jenkins是两种不同的工具，它们各自适用于不同的场景和用途。Argo CD主要用于持续部署和管理Kubernetes应用程序，而Jenkins是一个通用的自动化工具，可以用于构建和部署各种类型的应用程序。根据具体需求和环境，选择合适的工具能更好地满足项目的要求。 
+&emsp;&emsp; 综上所述，Argo CD和Jenkins是两种不同的工具，它们各自适用于不同的场景和用途。Argo CD主要用于持续部署和管理Kubernetes应用程序，而Jenkins是一个通用的自动化工具，可以用于构建和部署各种类型的应用程序。根据具体需求和环境，选择合适的工具能更好地满足项目的要求。
 
 ## 部署一个企业级 Jenkins 工具链
 
@@ -125,7 +125,7 @@ helm repo list
 
 ```shell
 [root@issac ~]# helm repo list
-NAME    URL              
+NAME    URL            
 jenkins https://charts.jenkins.io
 [root@issac ~]#
 ```
