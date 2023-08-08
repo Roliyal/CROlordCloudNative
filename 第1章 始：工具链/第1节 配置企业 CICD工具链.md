@@ -15,21 +15,29 @@
 | AWS CodePipeline     | -      | AWS原生服务、易于使用                  | 集成了许多AWS服务、易于配置和使用               | 集成非AWS服务需要自定义插件                            |
 | Aliyun CI/CD（云效） | -      | 阿里云原生服务、易于使用               | 集成了许多阿里云服务、与阿里云生态系统紧密结合  | 功能相对较少、不支持自定义镜像构建                     |
 | Tencent Cloud CI/CD  | -      | 腾讯云原生服务、易于使用               | 集成了许多腾讯云服务、与腾讯云生态系统紧密结合  | 功能相对较少、不支持自定义镜像构建                     |
+| Argo CD              | -      | 基于GitOps的Kubernetes应用程序管理工具 | 自动化部署和同步、可视化界面、应用程序版本控制  | 需要适应GitOps方式进行管理和部署                       |
 
 &emsp;&emsp;希望这张表格能够帮助您更好地了解各种CI/CD工具的特点和优缺点。需要注意的是，每个企业的具体情况和需求不同，最终选择哪个工具应该根据实际情况。
 
-### Jenkins 的理由
+### Argo CD 和 Jenkins 中选择 Jenkins 的理由
 
-&emsp;&emsp;Jenkins 是目前最流行和广泛使用的 CI/CD 工具之一，它有以下几个优点：
+**用途和焦点：**
 
-- 开源免费：Jenkins 是开源免费的工具，不需要支付任何授权费用。
-- 插件丰富：Jenkins 拥有大量的插件，可以满足各种不同的需求，例如版本控制、构建工具、测试工具、集成工具等等。
-- 可扩展性强：Jenkins 的架构非常灵活，可以轻松添加自定义插件和扩展，方便用户根据自己的需求进行定制。
-- 易于安装和使用：Jenkins 安装和配置非常简单，可以在几分钟内完成部署，同时它的界面也非常友好，方便用户进行操作和管理。
-- 社区活跃：Jenkins 拥有庞大的社区和用户群体，用户可以在社区中获得免费的技术支持、文档、教程等等资源。
-- 支持多种语言和技术栈：Jenkins 支持多种编程语言和技术栈，如 Java、Python、Node.js、Docker 等等，方便用户进行多语言和多技术栈的项目构建和部署。
+&emsp;&emsp; Argo CD：Argo CD主要用于管理Kubernetes应用程序的生命周期。它基于GitOps的理念，通过将应用程序的配置和状态定义存储在Git版本控制系统中，并通过自动化来保持实际状态与期望状态的一致性。Argo CD专注于持续部署和管理云原生应用程序在Kubernetes集群上的运行。
+Jenkins：Jenkins是一个用于持续集成和持续交付的自动化工具。它的主要用途是帮助开发团队在代码提交后自动构建、测试和部署应用程序，以实现快速、高质量的软件交付。
+**环境：**
 
-&emsp;&emsp;基于以上优点，Jenkins 成为了企业中广泛使用的 CI/CD 工具之一。
+&emsp;&emsp; Argo CD：Argo CD主要适用于Kubernetes环境，特别是用于部署和管理Kubernetes应用程序。
+Jenkins：Jenkins是一个通用的自动化工具，可以用于构建和部署各种类型的应用程序，不仅限于Kubernetes环境。
+**方式：**
+
+&emsp;&emsp; Argo CD：Argo CD采用GitOps的方式，通过Git仓库中的定义来持续监测和对比Kubernetes集群中的实际状态与期望状态，并自动进行部署、更新和回滚等操作。
+Jenkins：Jenkins采用持续集成和持续交付的方式，通过自动化工作流来实现构建、测试和部署过程。
+**界面：**
+
+&emsp;&emsp; Argo CD：Argo CD提供了直观的Web界面，方便用户查看应用程序的状态、历史版本和同步状态。
+&emsp;&emsp; Jenkins：Jenkins也提供了Web界面，但更加灵活和定制化，用户可以根据需求配置和管理不同的构建和部署流程。
+&emsp;&emsp; 综上所述，Argo CD和Jenkins是两种不同的工具，它们各自适用于不同的场景和用途。Argo CD主要用于持续部署和管理Kubernetes应用程序，而Jenkins是一个通用的自动化工具，可以用于构建和部署各种类型的应用程序。根据具体需求和环境，选择合适的工具能更好地满足项目的要求。 
 
 ## 部署一个企业级 Jenkins 工具链
 
@@ -52,7 +60,7 @@
 | 配置参数   | 指定 Jenkins URL、Admin 用户名和密码等                 |
 | 插件安装   | 可以通过配置 Helm chart 的 value 文件进行安装          |
 | 数据持久化 | 需要配置存储卷以保证数据的持久化和可靠性               |
-| 安全设置   | 部署后需要进行安全设置，如开启安全认证、插件安装等     |
+| 安全设置   | 部署后需要进行安全设置，如开启安全认证、插件安装等等   |
 
 #### 步骤一：部署 Jenkins
 
@@ -117,7 +125,7 @@ helm repo list
 
 ```shell
 [root@issac ~]# helm repo list
-NAME    URL                  
+NAME    URL              
 jenkins https://charts.jenkins.io
 [root@issac ~]#
 ```
