@@ -310,4 +310,4 @@ docker-compose up -d
 ```
 
 此处 Jenkins 名为容器名，根据实际情况灵活变动。
-至此，整个Jenkins配置完成，后续插件配置使用以及 CICD 链路在后续章节展示。
+至此，整个Jenkins配置完成，后续插件配置使用以及 CI/CD 链路在后续章节展示。
