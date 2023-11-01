@@ -447,6 +447,7 @@ spec:
 ```shell
 echo "/tmp/dumps/core.%e.%p" > /proc/sys/kernel/core_pattern
 ```
+注意提示，如果是 Kubernetes 环境中，需要给每个节点配置 core_pattern，建议您使用运维编排工具
 
 /proc/sys/kernel/core_pattern 文件定义了当程序崩溃时核心转储文件的命名格式和位置。
 
