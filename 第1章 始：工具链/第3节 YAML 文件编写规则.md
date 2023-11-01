@@ -500,7 +500,7 @@ spec:
 
 ```
 - 使用shell命令模拟错误：
-   进入nginx容器：
+进入nginx容器：
 ```shell
 kubectl exec -it nginx-coredump-test -- /bin/sh
 
@@ -510,7 +510,12 @@ kubectl exec -it nginx-coredump-test -- /bin/sh
 sh -c 'kill -s SEGV $$'
 
 ```
-
+在对应主机中，检查是否生成对应 core 文件
+```shell
+[root@issac]# ls -lrt /tmp/dumps/
+total 140
+-rw------- 1 root root 454656 Nov  1 15:36 core.sh.52
+```
 - 利用 gbd 查看错误信息
 ```shell
 # gdb /bin/sh /tmp/dumps/core.sh.52
