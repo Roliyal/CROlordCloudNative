@@ -130,53 +130,134 @@ jenkins https://charts.jenkins.io
 [root@issac ~]#
 ```
 
-2. 创建 jenkins values 配置文件
+2. 创建基础配置
 
+2.1 创建 namespace 名称
+```shell
+kubectl create ns cicd
+```
+2.2 创建证书（可以根据需求配置）
+```shell
+kubectl create secret tls [YOUR_TLS_SECRET_NAME] \
+  --cert=path/to/cert/file.crt \
+  --key=path/to/key/file.key \
+  -n cicd
+```
+##### 将 path/to/cert/file.crt 和 path/to/key/file.key 替换为您的证书文件和密钥文件的实际路径，并将 [YOUR_TLS_SECRET_NAME] 替换为您想要给 Secret 的名称。更新 Helm 命令中的 [YOUR_TLS_SECRET_NAME] 为您刚刚创建的 Secret 的名称。
+2.3 配置 values 配置清单
 ```yaml
 # jenkins_values.yaml
-service:
-  type: LoadBalancer
-jenkins:
-  Master:
-    HostName: devops.roliyal.com
-adminUser: crolord
-adminKey: crolord
+# 持久化存储配置
 persistence:
-  enabled: true
-  size: 100Gi
-image:
-  tag: latest-jdk11
-volumeMounts:
-  - name: jenkins-data
-    mountPath: /opt/jenkins
-volumes:
-  - name: jenkins-data
-    persistentVolumeClaim:
-      claimName: jenkins-pvc
-sslCert:
-  enabled: true
-  certFileName: cert.crt
-  keyFileName: key.key
+   enabled: true  # 启用持久化存储
+   storageClass: "alicloud-disk-essd"  # 指定存储类
+   size: "20Gi"  # 指定持久卷的大小
+   existingClaim: "jenkins-data"  # 如果已经有一个PVC，则可以在这里指定
+
+# Jenkins 控制器配置
+controller:
+   serviceType: "LoadBalancer"  # 将服务类型设置为LoadBalancer以便外部访问
+   adminPassword: "admin"  # 设置管理员密码
+   # 资源请求和限制配置
+   resources:
+      limits:
+         cpu: "2"  # CPU资源限制
+         memory: "4Gi"  # 内存资源限制
+      requests:
+         cpu: "500m"  # CPU资源请求
+         memory: "2Gi"  # 内存资源请求
+   # 安装插件列表
+   installPlugins:
+      - "git:latest"  # 安装最新版本的git插件
+      - "kubernetes:latest"  # 安装最新版本的kubernetes插件
+   # Jenkins Configuration as Code (JCasC)
+   JCasC:
+      configScripts:
+         # Kubernetes 云配置
+         cloud-kubernetes: |
+            jenkins:
+              clouds:
+                - kubernetes:
+                    name: "kubernetes"
+                    serverUrl: "https://kubernetes.default"
+                    namespace: "cicd"
+                    jenkinsUrl: "http://jenkins.cicd.svc.cluster.local:8080"
+                    containerCapStr: "10"
+                    # Jenkins 代理配置
+                    pods:
+                      - name: "jenkins-agent"
+                        namespace: "cicd"
+                        label: "jenkins-agent"
+                        containers:
+                          - name: "jnlp"
+                            image: "jenkins/inbound-agent:latest"
+                            workingDir: "/home/jenkins/agent"
+
+# Ingress配置
+ingress:
+   enabled: true  # 启用ingress
+   hostName: "devops.roliyal.com"  # 配置域名
+   # TLS配置
+   tls:
+      - hosts:
+           - "devops.roliyal.com"
+        secretName: "jenkins-tls"  # 指定TLS证书的secret名称
+
+# RBAC配置
+rbac:
+   create: true  # 创建RBAC资源
+
+# Prometheus监控配置
+prometheus:
+   enabled: true  # 启用Prometheus监控
+
+# 备份配置
+backup:
+   enabled: true  # 启用备份
+   schedule: "0 2 * * *"  # 备份计划，每天凌晨2点执行
+
+# Jenkins代理配置
+agent:
+   enabled: true  # 启用Jenkins代理
+   image: "jenkins/inbound-agent"  # 指定Jenkins代理使用的镜像
+   tag: "latest"  # 指定镜像标签
+   # 资源请求和限制
+   resources:
+      requests:
+         cpu: "500m"  # CPU资源请求
+         memory: "512Mi"  # 内存资源请求
+      limits:
+         cpu: "1"  # CPU资源限制
+         memory: "1Gi"  # 内存资源限制
+
+# 您可以根据需要添加更多配置项
 
 ```
 
 提示：根据需要修改 values.yaml 中的配置项
 
 ```shell
-jenkinsAdminPassword: Jenkins 管理员密码。
-persistence.enabled: 是否启用持久化存储。
-persistence.size: 持久化存储卷的大小。
-persistence.storageClass: 存储卷的 StorageClass。
-persistence.mountPath: 持久化存储卷挂载的路径。
-service.type: Jenkins Service 的类型，可以设置为 ClusterIP、NodePort 或 LoadBalancer。
-ingress.enabled: 是否启用 Ingress。
-ingress.hosts: Ingress 的域名列表。
+jenkinsAdminPassword: 设置用于 Jenkins 管理员账户的密码。在安装 Jenkins 时，您将使用这个密码登录 Jenkins 控制台。
+
+persistence.enabled: 该设置决定是否为 Jenkins 启用持久化存储。启用后，Jenkins 的数据（如作业配置、构建历史等）将存储在持久化卷中，这样即使 Pod 重启，数据也不会丢失。
+
+persistence.size: 指定持久化卷的大小。需要根据您预期的数据量来设置，确保有足够的空间存储 Jenkins 的数据和构建工件。
+
+persistence.storageClass: 该字段指定要使用的存储类。StorageClass 由您的 Kubernetes 环境提供，定义了使用哪种存储后端以及如何创建持久化卷。
+
+persistence.mountPath: 持久化卷在 Jenkins Pod 内部的挂载路径。这是 Jenkins 数据存储的目录，应确保 Jenkins 配置指向此路径。
+
+service.type: 定义如何暴露 Jenkins 服务。ClusterIP 仅在内部集群网络中可用，NodePort 在节点的特定端口上对外提供服务，而 LoadBalancer 会请求云提供者创建一个负载均衡器，为服务提供单一的接入点。
+
+ingress.enabled: 确定是否为 Jenkins 创建 Kubernetes Ingress 资源。Ingress 允许您通过定义的域名访问 Jenkins，通常与 Ingress 控制器一起使用，如 nginx 或 traefik。
+
+ingress.hosts: 一个或多个您希望 Jenkins 响应的域名列表。您需要确保这些域名在 DNS 中正确解析到您的 Kubernetes Ingress 控制器的 IP 地址。
 ```
 
 3. 部署 helm Jenkins
 
 ```
-helm install jenkins jenkins/jenkins -f values.yaml
+helm -n cicd install jenkins jenkins/jenkins -f jenkins-values.yaml
 ```
 
 4. 安装完成后，可以使用以下命令查看 Jenkins 的状态，以及配置 jenkins 初始化
