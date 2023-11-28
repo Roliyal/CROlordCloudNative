@@ -143,7 +143,14 @@ kubectl create secret tls [YOUR_TLS_SECRET_NAME] \
   --key=path/to/key/file.key \
   -n cicd
 ```
-2.3 创建持久卷
+2.3 创建密码凭据
+```shell
+kubectl create secret generic jenkins-admin-secret \
+  --from-literal=jenkins-admin-user=admin \
+  --from-literal=jenkins-admin-password=CROLord@123 \
+  -n cicd
+```
+2.4 创建持久卷
 ```shell
 kubectl apply -f - <<EOF
 apiVersion: v1
@@ -175,113 +182,100 @@ secret/jenkins-tls created
 ```
 
 ##### 将 path/to/cert/file.crt 和 path/to/key/file.key 替换为您的证书文件和密钥文件的实际路径，并将 [YOUR_TLS_SECRET_NAME] 替换为您想要给 Secret 的名称。更新 Helm 命令中的 [YOUR_TLS_SECRET_NAME] 为您刚刚创建的 Secret 的名称。
-2.3 配置 values 配置清单
+2.5 配置 values 配置清单
 ```yaml
 # jenkins_values.yaml
+
 # 持久化存储配置
 persistence:
    enabled: true
-   existingClaim: ""  # 如果没有现有的 PVC，则留空
-   storageClass: "alicloud-disk-ssd"  # 使用您的存储类
-   annotations: {}  # 可以添加注释，如果不需要注释，可以留空
-   labels: {}  # 可以添加标签，如果不需要标签，可以留空
-   accessMode: ReadWriteOnce  # 读写模式
-   size: "50Gi"  # PVC 大小
-   dataSource: null  # 如果不是通过克隆现有数据源创建 PVC，可以留空
-   subPath: "jenkins-home"  # 子路径，如果不需要子路径，可以留空
-   volumes: null  # 如果没有附加卷，可以留空
-   mounts: null  # 如果没有附加安装座，可以留空
+   storageClass: "alicloud-disk-ssd"
+   accessMode: ReadWriteOnce
+   size: "50Gi"
+   #subPath: "jenkins-home"
 
-# Jenkins 控制器配置
+#  JCasC 配置项
 controller:
-   serviceType: "ClusterIP"  # 将服务类型设置为LoadBalancer以便外部访问
-   adminPassword: "admin"  # 设置管理员密码
-   # 资源请求和限制配置
-   resources:
-      limits:
-         cpu: "2"  # CPU资源限制
-         memory: "4Gi"  # 内存资源限制
-      requests:
-         cpu: "500m"  # CPU资源请求
-         memory: "2Gi"  # 内存资源请求
-   # 安装插件列表
-   installPlugins:
-      - "git:latest"  # 安装最新版本的git插件
-      - "kubernetes:latest"  # 安装最新版本的kubernetes插件
-   # Jenkins Configuration as Code (JCasC)
+   # JCasC - 用户登录密码用户名配置
+   adminSecret: true
+   admin:
+      existingSecret: "jenkins-admin-secret"
+      userKey: "jenkins-admin-user"
+      passwordKey: "jenkins-admin-password"
+   # JCasC - 配置视图信息
    JCasC:
+      defaultConfig: true
       configScripts:
-         # Kubernetes 云配置
-         cloud-kubernetes: |
+         my-jenkins-views: |
             jenkins:
-              clouds:
-                - kubernetes:
-                    name: "kubernetes"
-                    serverUrl: "https://kubernetes.default"
-                    namespace: "cicd"
-                    jenkinsUrl: "http://jenkins.cicd.svc.cluster.local:8080"
-                    containerCapStr: "10"
-                    # Jenkins 代理配置
-                    pods:
-                      - name: "jenkins-agent"
-                        namespace: "cicd"
-                        label: "jenkins-agent"
-                        containers:
-                          - name: "jnlp"
-                            image: "jenkins/inbound-agent:latest"
-                            workingDir: "/home/jenkins/agent"
-         security-settings: |
-            jenkins:
-              securityRealm:
-                local:
-                  allowsSignup: false
-                  users:
-                    - id: "admin"
-                      password: "L9R8IX9qTT7auKAF"
-              authorizationStrategy:
-                loggedInUsersCanDoAnything:
-                  allowAnonymousRead: false
-
-
-# Ingress配置
-controller:
+              views:
+                - list:
+                    name: "FEBEseparation-UAT"
+                    description: "FEBE separation UAT view"
+                    jobNames:
+                      - "example-job"
+                    columns:
+                      - "status"
+                      - "weather"
+                      - "jobName"
+                      - "lastSuccess"
+                      - "lastFailure"
+                      - "lastDuration"
+                      - "buildButton"
+                    # 根据需要添加更多配置，如 jobNames, columns 等
+                - list:
+                    name: "FEBEseparation-Prod"
+                    description: "FEBE separation Production view"
+                    # 根据需要添加更多配置
+                - list:
+                    name: "Microservice-UAT"
+                    description: "Microservice UAT view"
+                    # 根据需要添加更多配置
+                - list:
+                    name: "Microservice-Prod"
+                    description: "Microservice Production view"
+                    # 根据需要添加更多配置
+   # ingress 控制器设置
+   serviceType: ClusterIP
+   servicePort: 8080
    ingress:
-      enabled: true  # 启用 Ingress
-      apiVersion: "extensions/v1beta1"  # Ingress API 版本
-      hostName: "jenkins.roliyal.com"  # Ingress 主机名
-      annotations:  # Ingress 注释
+      enabled: true
+      apiVersion: "networking.k8s.io/v1"
+      hostName: "jenkins.roliyal.com"
+      annotations:
          nginx.ingress.kubernetes.io/rewrite-target: /
-         nginx.ingress.kubernetes.io/ssl-redirect: "true"  # 强制重定向到 HTTPS
-      tls:  # TLS 配置
-         - secretName: "jenkins-tls"  # 指定用于 TLS 的 Secret 名称
+         nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      tls:
+         - secretName: "jenkins-tls"
            hosts:
-              - "jenkins.roliyal.com"  # 您的域名
+              - "jenkins.roliyal.com"
+
 # RBAC配置
 rbac:
-   create: true  # 创建RBAC资源
+   create: true
 
 # Prometheus监控配置
 prometheus:
-   enabled: true  # 启用Prometheus监控
+   enabled: true
 
 # 备份配置
 backup:
-   enabled: true  # 启用备份
-   schedule: "0 2 * * *"  # 备份计划，每天凌晨2点执行
+   enabled: true
+   schedule: "0 2 * * *"
 
 # Jenkins代理配置
 agent:
-   enabled: true  # 启用Jenkins代理
-   image: "jenkins/inbound-agent"  # 指定Jenkins代理使用的镜像
-   tag: "latest"  # 指定镜像标签
-   # 资源请求和限制
+   enabled: true
+   image: "jenkins/inbound-agent"
+   tag: "latest"
    resources:
       requests:
-         cpu: "500m"  # CPU资源请求
-         memory: "512Mi"  # 内存资源请求
+         cpu: "500m"
+         memory: "512Mi"
       limits:
-         cpu: "1"  # CPU资源限制
-         memory: "1Gi"  # 内存资源限制
+         cpu: "1"
+         memory: "1Gi"
+
 
 ```
 
@@ -313,7 +307,7 @@ helm -n cicd install jenkins jenkins/jenkins -f jenkins-values.yaml
 
 示例
 ```shell
-helm -n cicd install    jenkins jenkins/jenkins -f /opt/tls/jenkins_values.yaml
+helm -n cicd install    jenkins jenkins/jenkins -f /opt/tls/jenkins-values.yaml
 ```
 
 4. 安装完成后，可以使用以下命令查看 Jenkins 的状态，以及配置 jenkins 初始化
@@ -322,7 +316,8 @@ helm -n cicd install    jenkins jenkins/jenkins -f /opt/tls/jenkins_values.yaml
 ```
  kubectl exec --namespace cicd -it svc/jenkins -c jenkins -- /bin/cat /run/secrets/additional/chart-admin-password && echo```
 ```
-4.1 
+
+正常访问上述配置域名地址查看是否符合预期
 ##### 方案二基于 ECS 服务器构建 docker-compose-Jenkins
 
 - 部署 docker && docker-compose
@@ -449,3 +444,15 @@ docker-compose up -d
 
 此处 Jenkins 名为容器名，根据实际情况灵活变动。
 至此，整个Jenkins配置完成，后续插件配置使用以及 CI/CD 链路在后续章节展示。
+
+mse
+1、mse配置入门手册 https://help.aliyun.com/zh/mse/getting-started/mse-quick-start
+2、从Spring Cloud Gateway迁移到云原生网关 https://www.alibabacloud.com/help/zh/mse/user-guide/migrate-services-from-spring-cloud-gateway-to-cloud-native-gateways
+3、slb 迁移：https://help.aliyun.com/zh/mse/user-guide/migrate-slb-instances
+4、流量治理： https://www.alibabacloud.com/help/zh/mse/user-guide/traffic-governance/
+
+可观测arms
+1、 通用Kubernetes环境自动安装探针 https://help.aliyun.com/zh/arms/application-monitoring/user-guide/install-the-arms-agent-for-an-application-deployed-in-an-open-source-kubernetes-environment
+2、调整采样率： https://help.aliyun.com/zh/arms/application-monitoring/use-cases/use-trace-sampling-policies?spm=a2c4g.11186623.0.0.17ff79a5dQcbTG
+3、PTS 性能测试与JMeter压测：  https://help.aliyun.com/zh/pts/getting-started/quick-start-for-pts-stress-testing?spm=a2c4g.11186623.0.0.5ce47b61SzejsX
+
