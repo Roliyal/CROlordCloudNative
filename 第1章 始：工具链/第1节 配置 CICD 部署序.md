@@ -312,9 +312,9 @@ helm -n cicd install    jenkins jenkins/jenkins -f /opt/tls/jenkins-values.yaml
 
 4. 安装完成后，可以使用以下命令查看 Jenkins 的状态，以及配置 jenkins 初始化
 
-4.1 查看 Jenkins 密码
+4.1 查看 Jenkins 密码，本文默认密码则是步骤2.3 创建 secrets 凭据所设置密码
 ```
- kubectl exec --namespace cicd -it svc/jenkins -c jenkins -- /bin/cat /run/secrets/additional/chart-admin-password && echo```
+ kubectl exec --namespace cicd -it svc/jenkins -c jenkins -- /bin/cat /run/secrets/additional/chart-admin-password && echo
 ```
 
 正常访问上述配置域名地址查看是否符合预期
