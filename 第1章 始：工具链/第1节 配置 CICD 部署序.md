@@ -184,7 +184,7 @@ secret/jenkins-tls created
 ##### 将 path/to/cert/file.crt 和 path/to/key/file.key 替换为您的证书文件和密钥文件的实际路径，并将 [YOUR_TLS_SECRET_NAME] 替换为您想要给 Secret 的名称。更新 Helm 命令中的 [YOUR_TLS_SECRET_NAME] 为您刚刚创建的 Secret 的名称。
 2.5 配置 values 配置清单
 ```yaml
-# jenkins_values.yaml
+# jenkins-values.yaml
 
 # 持久化存储配置
 persistence:
@@ -192,9 +192,8 @@ persistence:
    storageClass: "alicloud-disk-ssd"
    accessMode: ReadWriteOnce
    size: "50Gi"
-   #subPath: "jenkins-home"
-
-#  JCasC 配置项
+   subPath: "jenkins-home"
+# JCasC 配置项
 controller:
    # JCasC - 用户登录密码用户名配置
    adminSecret: true
@@ -202,6 +201,17 @@ controller:
       existingSecret: "jenkins-admin-secret"
       userKey: "jenkins-admin-user"
       passwordKey: "jenkins-admin-password"
+   #配置时区
+   javaOpts: "-Duser.timezone=Asia/Shanghai"
+   #配置插件
+   installPlugins:
+      - kubernetes:4147.va_d406fb_66172
+      - workflow-aggregator:latest
+      - git:5.2.1
+      - configuration-as-code:1746.vf1673cfe690a
+      - job-dsl:1.87
+      - docker-build-publish:1.4.0
+      - sshd:3.312.v1c601b_c83b_0e
    # JCasC - 配置视图信息
    JCasC:
       defaultConfig: true
@@ -213,7 +223,6 @@ controller:
                     name: "FEBEseparation-UAT"
                     description: "FEBE separation UAT view"
                     jobNames:
-                      - "example-job"
                     columns:
                       - "status"
                       - "weather"
@@ -235,6 +244,7 @@ controller:
                     name: "Microservice-Prod"
                     description: "Microservice Production view"
                     # 根据需要添加更多配置
+
    # ingress 控制器设置
    serviceType: ClusterIP
    servicePort: 8080
@@ -266,17 +276,65 @@ backup:
 # Jenkins代理配置
 agent:
    enabled: true
+   defaultsProviderTemplate: ""
+   jenkinsUrl:
+   jenkinsTunnel:
+   kubernetesConnectTimeout: 5
+   kubernetesReadTimeout: 15
+   maxRequestsPerHostStr: "32"
+   namespace:
    image: "jenkins/inbound-agent"
    tag: "latest"
+   workingDir: "/home/jenkins/agent"
+   nodeUsageMode: "NORMAL"
+   customJenkinsLabels: []
+   imagePullSecretName:
+   componentName: "jenkins-agent"
+   websocket: false
+   privileged: false
+   runAsUser:
+   runAsGroup:
    resources:
       requests:
-         cpu: "500m"
+         cpu: "512m"
          memory: "512Mi"
       limits:
-         cpu: "1"
-         memory: "1Gi"
-
-
+         cpu: "512m"
+         memory: "512Mi"
+   alwaysPullImage: false
+   podRetention: "Never"
+   showRawYaml: true
+   volumes: []
+   workspaceVolume: {}
+   envVars: []
+   nodeSelector: {}
+   command:
+   args: "${computer.jnlpmac} ${computer.name}"
+   sideContainerName: "jnlp"
+   TTYEnabled: false
+   containerCap: 10
+   podName: "jenkins-slave"
+   idleMinutes: 0
+   yamlTemplate: ""
+   yamlMergeStrategy: "override"
+   connectTimeout: 100
+   annotations: {}
+   podTemplates:
+      python: |
+         - name: python 
+           label: jenkins-python 
+           serviceAccount: jenkins 
+           containers: 
+             - name: python 
+               image: python:3 
+               command: "/bin/sh -c" 
+               args: "cat" 
+               ttyEnabled: true 
+               privileged: true 
+               resourceRequestCpu: "400m" 
+               resourceRequestMemory: "512Mi" 
+               resourceLimitCpu: "1" 
+               resourceLimitMemory: "1024Mi" 
 ```
 
 提示：根据需要修改 values.yaml 中的配置项
@@ -444,15 +502,3 @@ docker-compose up -d
 
 此处 Jenkins 名为容器名，根据实际情况灵活变动。
 至此，整个Jenkins配置完成，后续插件配置使用以及 CI/CD 链路在后续章节展示。
-
-mse
-1、mse配置入门手册 https://help.aliyun.com/zh/mse/getting-started/mse-quick-start
-2、从Spring Cloud Gateway迁移到云原生网关 https://www.alibabacloud.com/help/zh/mse/user-guide/migrate-services-from-spring-cloud-gateway-to-cloud-native-gateways
-3、slb 迁移：https://help.aliyun.com/zh/mse/user-guide/migrate-slb-instances
-4、流量治理： https://www.alibabacloud.com/help/zh/mse/user-guide/traffic-governance/
-
-可观测arms
-1、 通用Kubernetes环境自动安装探针 https://help.aliyun.com/zh/arms/application-monitoring/user-guide/install-the-arms-agent-for-an-application-deployed-in-an-open-source-kubernetes-environment
-2、调整采样率： https://help.aliyun.com/zh/arms/application-monitoring/use-cases/use-trace-sampling-policies?spm=a2c4g.11186623.0.0.17ff79a5dQcbTG
-3、PTS 性能测试与JMeter压测：  https://help.aliyun.com/zh/pts/getting-started/quick-start-for-pts-stress-testing?spm=a2c4g.11186623.0.0.5ce47b61SzejsX
-
