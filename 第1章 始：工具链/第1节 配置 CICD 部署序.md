@@ -216,7 +216,13 @@ controller:
    JCasC:
       defaultConfig: true
       configScripts:
-         my-jenkins-views: |
+         update-center: |
+         jenkins:
+            updateCenter:
+               sites:
+                  - id: "default"
+                    url: "https://mirrors.aliyun.com/jenkins/updates/update-center.json"
+            my-jenkins-views: |
             jenkins:
               views:
                 - list:
