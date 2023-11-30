@@ -212,23 +212,32 @@ controller:
       - job-dsl:1.87
       - docker-build-publish:1.4.0
       - sshd:3.312.v1c601b_c83b_0e
-   # JCasC - 配置视图信息
    JCasC:
       defaultConfig: true
       configScripts:
+         #定义一个demo job 用于配置slave 是否生效      
+         my-jobs: |
+            jobs:
+              - script: >
+                  job('demo-job') {
+                      steps {
+                          shell('echo Hello World')
+                      }
+                  }      
          update-center: |
-         jenkins:
-            updateCenter:
-               sites:
+            jenkins:
+              updateCenter:
+                sites:
                   - id: "default"
-                    url: "https://mirrors.aliyun.com/jenkins/updates/update-center.json"
-            my-jenkins-views: |
+                    url: "https://mirrors.aliyun.com/jenkins/updates/update-center.json"      
+         my-jenkins-views: |
             jenkins:
               views:
                 - list:
                     name: "FEBEseparation-UAT"
                     description: "FEBE separation UAT view"
                     jobNames:
+                      - "demo-job"          
                     columns:
                       - "status"
                       - "weather"
@@ -237,10 +246,11 @@ controller:
                       - "lastFailure"
                       - "lastDuration"
                       - "buildButton"
-                    # 根据需要添加更多配置，如 jobNames, columns 等
+                        # 根据需要添加更多配置，如 jobNames, columns 等
                 - list:
                     name: "FEBEseparation-Prod"
                     description: "FEBE separation Production view"
+                    jobNames:
                     # 根据需要添加更多配置
                 - list:
                     name: "Microservice-UAT"
@@ -251,7 +261,7 @@ controller:
                     description: "Microservice Production view"
                     # 根据需要添加更多配置
 
-   # ingress 控制器设置
+   #ingress 控制器设置
    serviceType: ClusterIP
    servicePort: 8080
    ingress:
