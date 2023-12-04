@@ -180,6 +180,16 @@ namespace/cicd created
 secret/jenkins-tls created
 [root@CROLord-To-ACK tls]# 
 ```
+###### 额外配置示例，用于初始化创建 secret ，此示例为 credentials 全局凭据信息，相关信息根据实际情况配置
+```shell
+kubectl create secret generic secret-credentials \
+  --from-literal=github-username=本文演示使用github账户 \
+  --from-literal=github-password=本文演示使用github密码 \
+  --from-literal=token=本文演示使用github token 使用 \
+  --from-literal=aliyun-username=本文演示使用阿里云账号用于ACR登录账号 \
+  --from-literal=aliyun-password=本文演示使用阿里云账号用于ACR登录密码
+
+```
 
 ##### 将 path/to/cert/file.crt 和 path/to/key/file.key 替换为您的证书文件和密钥文件的实际路径，并将 [YOUR_TLS_SECRET_NAME] 替换为您想要给 Secret 的名称。更新 Helm 命令中的 [YOUR_TLS_SECRET_NAME] 为您刚刚创建的 Secret 的名称。
 2.5 配置 values 配置清单
@@ -212,10 +222,37 @@ controller:
       - job-dsl:1.87
       - docker-build-publish:1.4.0
       - sshd:3.312.v1c601b_c83b_0e
+   existingSecret: "secret-credentials"
    JCasC:
       defaultConfig: true
       configScripts:
-         #定义一个demo job 用于配置slave 是否生效      
+         #用于定义预设jenkins 全局凭据，此选项为可选，如不需要则删除这段配置  
+         jenkins-casc-configs-credentials: |
+            credentials:
+              system:
+                domainCredentials:
+                - credentials:
+                  - string:
+                      description: "Kubernetes Token PROD"
+                      id: "k8s-token-Prod"
+                      scope: GLOBAL
+                      secret: ${secret-credentials-k8s-token-prod}
+                  - string:
+                      description: "Kubernetes Token UAT"
+                      id: "k8s-token-UAT"
+                      scope: GLOBAL
+                      secret: ${secret-credentials-k8s-token-uat}
+                  - string:
+                      description: "GitHub Token|Gitlab Token"
+                      id: "github-token|gitlab-token"
+                      scope: GLOBAL
+                      secret: ${secret-credentials-github-token}
+                  - usernamePassword:
+                      description: "ACR Registry Credentials"
+                      id: "ACR-registry-credentials"
+                      password: ${secret-credentials-registry-password}
+                      scope: GLOBAL
+                      username: ${secret-credentials-registry-username}         
          my-jobs: |
             jobs:
               - script: >
