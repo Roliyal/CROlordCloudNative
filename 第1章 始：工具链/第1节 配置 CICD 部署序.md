@@ -186,8 +186,8 @@ kubectl create secret generic secret-credentials \
   --from-file=k8s-prod-config=本文演示使用生产环境 ACKkubeconfig 配置文件 \
   --from-file=k8s-uat-config=本文演示使用测试环境 ACKkubeconfig 配置文件 \
   --from-file=github-token=本文演示使用github token 使用 \
-  --from-literal=aliyun-username=本文演示使用阿里云账号用于ACR登录账号 \
-  --from-literal=aliyun-password=本文演示使用阿里云账号用于ACR登录密码
+  --from-literal=acr-username=本文演示使用阿里云账号用于ACR登录账号 \
+  --from-literal=acr-password=本文演示使用阿里云账号用于ACR登录密码
   
 ###示例  
 [root@CROLord-To-ACK tls]# ll config/
