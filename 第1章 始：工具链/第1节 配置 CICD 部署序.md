@@ -147,7 +147,7 @@ kubectl create secret tls [YOUR_TLS_SECRET_NAME] \
 ```shell
 kubectl create secret generic jenkins-admin-secret \
   --from-literal=jenkins-admin-user=admin \
-  --from-literal=jenkins-admin-password=CROLord@123 \
+  --from-literal=jenkins-admin-password= 用于登录 jenkins 密码 \
   -n cicd
 ```
 2.4 创建持久卷
@@ -183,11 +183,27 @@ secret/jenkins-tls created
 ###### 额外配置示例，用于初始化创建 secret ，此示例为 credentials 全局凭据信息，相关信息根据实际情况配置
 ```shell
 kubectl create secret generic secret-credentials \
-  --from-literal=github-username=本文演示使用github账户 \
-  --from-literal=github-password=本文演示使用github密码 \
-  --from-literal=token=本文演示使用github token 使用 \
+  --from-file=k8s-prod-config=本文演示使用生产环境 ACKkubeconfig 配置文件 \
+  --from-file=k8s-uat-config=本文演示使用测试环境 ACKkubeconfig 配置文件 \
+  --from-file=github-token=本文演示使用github token 使用 \
   --from-literal=aliyun-username=本文演示使用阿里云账号用于ACR登录账号 \
   --from-literal=aliyun-password=本文演示使用阿里云账号用于ACR登录密码
+  
+###示例  
+[root@CROLord-To-ACK tls]# ll config/
+total 20
+-rw-r--r-- 1 root root 8003 Dec  6 16:28 crolord-ack-prod.yaml
+-rw-r--r-- 1 root root 8005 Dec  6 16:29 crolord-ack-uat.yaml
+-rw-r--r-- 1 root root   94 Dec  6 16:31 github.txt
+[root@CROLord-To-ACK tls]# kubectl create secret generic secret-credentials \
+> --from-file=k8s-prod-config=config/crolord-ack-prod.yaml \
+> --from-file=k8s-uat-config=config/crolord-ack-uat.yaml \
+> --from-literal=acr-username='本文演示使用阿里云账号用于ACR登录账号' \
+> --from-literal=acr-password='本文演示使用阿里云账号用于ACR登录密码' \
+> --from-file=github-token=config/github.txt \
+> -n cicd
+secret/secret-credentials created
+[root@CROLord-To-ACK tls]# kubectl get secret secret-credentials -n cicd -o jsonpath="{.data.acr-username}" | base64 --decode
 
 ```
 
