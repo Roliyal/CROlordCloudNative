@@ -266,9 +266,9 @@ controller:
                   - usernamePassword:
                       description: "ACR Registry Credentials"
                       id: "ACR-registry-credentials"
-                      password: ${secret-credentials-registry-password}
+                      password: ${secret-credentials-acr-password}
                       scope: GLOBAL
-                      username: ${secret-credentials-registry-username}         
+                      username: ${secret-credentials-acr-username}         
          my-jobs: |
             jobs:
               - script: >
