@@ -218,7 +218,15 @@ persistence:
    storageClass: "alicloud-disk-ssd"
    accessMode: ReadWriteOnce
    size: "50Gi"
-   subPath: "jenkins-home"
+   # subPath: "jenkins_home"
+   # 以下部分为高级配置，如不需要可保持当前状态
+   existingClaim:
+   annotations: {}
+   labels: {}
+   dataSource:
+   volumes:
+   mounts:
+
 # JCasC 配置项
 controller:
    # JCasC - 用户登录密码用户名配置
@@ -231,18 +239,28 @@ controller:
    javaOpts: "-Duser.timezone=Asia/Shanghai"
    #配置插件
    installPlugins:
-      - kubernetes:4147.va_d406fb_66172
+      - workflow-multibranch:770.v1a_d0708dd1f6
+      - kubernetes:4151.v6fa_f0fb_0b_4c9
       - workflow-aggregator:latest
       - git:5.2.1
-      - configuration-as-code:1746.vf1673cfe690a
+      - configuration-as-code:1756.v2b_7eea_874392
       - job-dsl:1.87
-      - docker-build-publish:1.4.0
+      - docker-build-publish:1.3.1
       - sshd:3.312.v1c601b_c83b_0e
+      - ws-cleanup:0.45
+      - github:1.37.3.1
+      - build-name-setter:2.4.0
+      - versionnumber:1.11
+      - dingding-notifications:2.6.2
+      - docker-workflow:572.v950f58993843
    existingSecret: "secret-credentials"
+   additionalExistingSecrets:
+      - name: secret-credentials
+        keyName: acr-username
    JCasC:
       defaultConfig: true
       configScripts:
-         #用于定义预设jenkins 全局凭据，此选项为可选，如不需要则删除这段配置  
+         #用于定义预设jenkins 全局凭据，此选项为可选，如不需要则删除这段配置
          jenkins-casc-configs-credentials: |
             credentials:
               system:
@@ -268,7 +286,7 @@ controller:
                       id: "ACR-registry-credentials"
                       password: ${secret-credentials-acr-password}
                       scope: GLOBAL
-                      username: ${secret-credentials-acr-username}         
+                      username: ${secret-credentials-acr-username}
          my-jobs: |
             jobs:
               - script: >
@@ -276,21 +294,23 @@ controller:
                       steps {
                           shell('echo Hello World')
                       }
-                  }      
+                  }
          update-center: |
             jenkins:
               updateCenter:
                 sites:
                   - id: "default"
-                    url: "https://mirrors.aliyun.com/jenkins/updates/update-center.json"      
+                    #如 dingding通知则需要配置官方源
+                    url: "https://updates.jenkins.io/update-center.json"
+                    #url: "https://mirrors.aliyun.com/jenkins/updates/update-center.json"
          my-jenkins-views: |
             jenkins:
               views:
                 - list:
                     name: "FEBEseparation-UAT"
                     description: "FEBE separation UAT view"
-                    jobNames:
-                      - "demo-job"          
+                   #jobNames:
+                    # - "demo-job"
                     columns:
                       - "status"
                       - "weather"
@@ -299,20 +319,16 @@ controller:
                       - "lastFailure"
                       - "lastDuration"
                       - "buildButton"
-                        # 根据需要添加更多配置，如 jobNames, columns 等
                 - list:
                     name: "FEBEseparation-Prod"
                     description: "FEBE separation Production view"
-                    jobNames:
-                    # 根据需要添加更多配置
+                    # jobNames:
                 - list:
                     name: "Microservice-UAT"
                     description: "Microservice UAT view"
-                    # 根据需要添加更多配置
                 - list:
                     name: "Microservice-Prod"
                     description: "Microservice Production view"
-                    # 根据需要添加更多配置
 
    #ingress 控制器设置
    serviceType: ClusterIP
@@ -329,7 +345,7 @@ controller:
            hosts:
               - "jenkins.roliyal.com"
 
-# RBAC配置
+# RBAC配置-默认开启
 rbac:
    create: true
 
@@ -373,7 +389,6 @@ agent:
    alwaysPullImage: false
    podRetention: "Never"
    showRawYaml: true
-   volumes: []
    workspaceVolume: {}
    envVars: []
    nodeSelector: {}
@@ -389,21 +404,28 @@ agent:
    connectTimeout: 100
    annotations: {}
    podTemplates:
-      python: |
-         - name: python 
-           label: jenkins-python 
-           serviceAccount: jenkins 
-           containers: 
-             - name: python 
-               image: python:3 
-               command: "/bin/sh -c" 
-               args: "cat" 
-               ttyEnabled: true 
-               privileged: true 
-               resourceRequestCpu: "400m" 
-               resourceRequestMemory: "512Mi" 
-               resourceLimitCpu: "1" 
-               resourceLimitMemory: "1024Mi" 
+      podman: |
+         - name: podman
+           label: podman
+           serviceAccount: jenkins
+           containers:
+             - name: podman
+               image: crolord/podman:latest
+               command: "/bin/sh -c"
+               args: "cat"
+               ttyEnabled: true
+               privileged: true
+           volumes:
+             - hostPathVolume:
+                 hostPath: "/sys"
+                 mountPath: "/sys"
+   volumes:
+      - type: HostPath
+        hostPath: /var/lib/containers
+        mountPath: /var/lib/containers
+      - type: HostPath
+        hostPath: /sys
+        mountPath: /sys 
 ```
 
 提示：根据需要修改 values.yaml 中的配置项
