@@ -182,13 +182,22 @@ secret/jenkins-tls created
 ```
 ###### 额外配置示例，用于初始化创建 secret ，此示例为 credentials 全局凭据信息，相关信息根据实际情况配置
 ```shell
-kubectl create secret generic secret-credentials \
-  --from-file=k8s-prod-config=本文演示使用生产环境 ACKkubeconfig 配置文件 \
-  --from-file=k8s-uat-config=本文演示使用测试环境 ACKkubeconfig 配置文件 \
-  --from-file=github-token=本文演示使用github token 使用 \
-  --from-literal=acr-username=本文演示使用阿里云账号用于ACR登录账号 \
-  --from-literal=acr-password=本文演示使用阿里云账号用于ACR登录密码
-  
+kubectl create secret generic secret-credentials -n cicd \
+  --from-file=k8s-prod-config=/opt/tls/config/crolord-ack-prod.yaml 本文演示使用生产环境 ACKkubeconfig 配置文件 \
+  --from-file=k8s-uat-config=/opt/tls/config/crolord-ack-uat.yaml 本文演示使用测试环境 ACKkubeconfig 配置文件 \
+  --from-file=github-token=/opt/tls/config/github.txt 本文演示使用github token 使用 \
+  --from-literal=acr-username=TFRBSTV0OFJjcWkyeEtpNWtR 本文演示使用阿里云账号用于ACR登录账号（echo -n 'your_acr_username' | base64 生成，需要根据实际字段改变） \
+  --from-literal=acr-password=TFRBSTV0OFJjcWkyeEtpNWtR /opt/tls/config本文演示使用阿里云账号用于ACR登录密码（echo -n 'your_acr_password' | base64 生成，需要根据实际字段改变）
+```
+###### 补充 ACR 容器镜像服务安全扫描全局凭据，以下数据通过 "echo -n 'your_access_key_id' | base64 生成，需要根据实际字段改变
+```shell
+kubectl patch secret secret-credentials -n cicd --patch='
+ data:
+   access_key_id: "TFRASDASDSADACCZ4NVhy"
+   access_key_secret: "RHJuTASDASCZXCZCadasdbkRuMlR0"
+   token: "M2VkMASCADASDSXSADASDASZXCVjNzVjasdA4"
+ '
+```
 ###示例  
 [root@CROLord-To-ACK tls]# ll config/
 total 20
@@ -214,149 +223,181 @@ secret/secret-credentials created
 
 # 持久化存储配置
 persistence:
-   enabled: true
-   storageClass: "alicloud-disk-ssd"
-   accessMode: ReadWriteOnce
-   size: "50Gi"
-   # subPath: "jenkins_home"
-   # 以下部分为高级配置，如不需要可保持当前状态
-   existingClaim:
-   annotations: {}
-   labels: {}
-   dataSource:
-   volumes:
-   mounts:
+  enabled: true
+  storageClass: "alicloud-disk-ssd"
+  accessMode: ReadWriteOnce
+  size: "50Gi"
+  # subPath: "jenkins_home"
+  # 以下部分为高级配置，如不需要可保持当前状态
+  existingClaim:
+  annotations: {}
+  labels: {}
+  dataSource:
+  volumes:
+  mounts:
 
 # JCasC 配置项
 controller:
-   # JCasC - 用户登录密码用户名配置
-   adminSecret: true
-   admin:
-      existingSecret: "jenkins-admin-secret"
-      userKey: "jenkins-admin-user"
-      passwordKey: "jenkins-admin-password"
-   #配置时区
-   javaOpts: "-Duser.timezone=Asia/Shanghai"
-   #配置插件
-   installPlugins:
-      - workflow-multibranch:770.v1a_d0708dd1f6
-      - kubernetes:4151.v6fa_f0fb_0b_4c9
-      - workflow-aggregator:latest
-      - git:5.2.1
-      - configuration-as-code:1756.v2b_7eea_874392
-      - job-dsl:1.87
-      - docker-build-publish:1.3.1
-      - sshd:3.312.v1c601b_c83b_0e
-      - ws-cleanup:0.45
-      - github:1.37.3.1
-      - build-name-setter:2.4.0
-      - versionnumber:1.11
-      - dingding-notifications:2.6.2
-      - docker-workflow:572.v950f58993843
-   existingSecret: "secret-credentials"
-   additionalExistingSecrets:
-      - name: secret-credentials
-        keyName: acr-username
-   JCasC:
-      defaultConfig: true
-      configScripts:
-         #用于定义预设jenkins 全局凭据，此选项为可选，如不需要则删除这段配置
-         jenkins-casc-configs-credentials: |
-            credentials:
-              system:
-                domainCredentials:
-                - credentials:
-                  - string:
-                      description: "Kubernetes Token PROD"
-                      id: "k8s-token-Prod"
-                      scope: GLOBAL
-                      secret: ${secret-credentials-k8s-token-prod}
-                  - string:
-                      description: "Kubernetes Token UAT"
-                      id: "k8s-token-UAT"
-                      scope: GLOBAL
-                      secret: ${secret-credentials-k8s-token-uat}
-                  - string:
-                      description: "GitHub Token|Gitlab Token"
-                      id: "github-token|gitlab-token"
-                      scope: GLOBAL
-                      secret: ${secret-credentials-github-token}
-                  - usernamePassword:
-                      description: "ACR Registry Credentials"
-                      id: "ACR-registry-credentials"
-                      password: ${secret-credentials-acr-password}
-                      scope: GLOBAL
-                      username: ${secret-credentials-acr-username}
-         my-jobs: |
-            jobs:
-              - script: >
-                  job('demo-job') {
-                      steps {
-                          shell('echo Hello World')
-                      }
+  # JCasC - 用户登录密码用户名配置
+  adminSecret: true
+  admin:
+    existingSecret: "jenkins-admin-secret"
+    userKey: "jenkins-admin-user"
+    passwordKey: "jenkins-admin-password"
+  #配置时区
+  javaOpts: "-Duser.timezone=Asia/Shanghai"
+  #配置插件
+  installPlugins:
+    - workflow-multibranch:770.v1a_d0708dd1f6     
+    - kubernetes:4151.v6fa_f0fb_0b_4c9
+    - workflow-aggregator:latest
+    - git:5.2.1
+    - configuration-as-code:1756.v2b_7eea_874392
+    - job-dsl:1.87
+    - docker-build-publish:1.3.1
+    - sshd:3.312.v1c601b_c83b_0e
+    - ws-cleanup:0.45
+    - github:1.37.3.1
+    - build-name-setter:2.4.0
+    - versionnumber:1.11
+    - dingding-notifications:2.6.2
+    - docker-workflow:572.v950f58993843
+  existingSecret: "secret-credentials"
+  additionalExistingSecrets:
+    - name: secret-credentials
+      keyName: acr-username
+    - name: secret-credentials
+      keyName: acr-password
+    - name: secret-credentials
+      keyName: k8s-uat-config
+    - name: secret-credentials
+      keyName: k8s-prod-config
+    - name: secret-credentials
+      keyName: github-token
+    - name: secret-credentials
+      keyName: ACCESS_KEY_ID      
+    - name: secret-credentials
+      keyName: ACCESS_KEY_SECRET
+    - name: secret-credentials
+      keyName: TOKEN      
+  JCasC:
+    defaultConfig: true
+    configScripts:
+      #用于定义预设jenkins 全局凭据，此选项为可选，如不需要则删除这段配置
+      jenkins-casc-configs-credentials: |
+        credentials:
+          system:
+            domainCredentials:
+            - credentials:
+              - string:
+                  description: "AccessKey ID "
+                  id: "accessKeyid"
+                  scope: GLOBAL
+                  secret: ${secret-credentials-ACCESS_KEY_ID}
+            - credentials:
+              - string:
+                  description: "AccessKey Secret"
+                  id: "ACCESS_KEY_SECRET"
+                  scope: GLOBAL
+                  secret: ${secret-credentials-ACCESS_KEY_SECRET}
+              - credentials:
+              - string:
+                  description: "TOKEN"
+                  id: "TOKEN"
+                  scope: GLOBAL
+                  secret: ${secret-credentials-TOKEN}
+            - credentials:
+              - string:
+                  description: "Kubernetes Token PROD"
+                  id: "k8s_token-prod"
+                  scope: GLOBAL
+                  secret: ${secret-credentials-k8s-prod-config}
+              - string:
+                  description: "Kubernetes Token UAT"
+                  id: "k8s_token_uat"
+                  scope: GLOBAL
+                  secret: ${secret-credentials-k8s-uat-config}
+              - string:
+                  description: "GitHub Token or Gitlab Token"
+                  id: "github_token"
+                  scope: GLOBAL
+                  secret: ${secret-credentials-github-token}
+              - usernamePassword:
+                  description: "ACR Registry Credentials"
+                  id: "acr_registry_credentials"
+                  password: ${secret-credentials-acr-password}
+                  scope: GLOBAL
+                  username: ${secret-credentials-acr-username}
+      my-jobs: |
+        jobs:
+          - script: >
+              job('demo-job') {
+                  steps {
+                      shell('echo Hello World')
                   }
-         update-center: |
-            jenkins:
-              updateCenter:
-                sites:
-                  - id: "default"
-                    #如 dingding通知则需要配置官方源
-                    url: "https://updates.jenkins.io/update-center.json"
-                    #url: "https://mirrors.aliyun.com/jenkins/updates/update-center.json"
-         my-jenkins-views: |
-            jenkins:
-              views:
-                - list:
-                    name: "FEBEseparation-UAT"
-                    description: "FEBE separation UAT view"
-                   #jobNames:
-                    # - "demo-job"
-                    columns:
-                      - "status"
-                      - "weather"
-                      - "jobName"
-                      - "lastSuccess"
-                      - "lastFailure"
-                      - "lastDuration"
-                      - "buildButton"
-                - list:
-                    name: "FEBEseparation-Prod"
-                    description: "FEBE separation Production view"
-                    # jobNames:
-                - list:
-                    name: "Microservice-UAT"
-                    description: "Microservice UAT view"
-                - list:
-                    name: "Microservice-Prod"
-                    description: "Microservice Production view"
+              }
+      update-center: |
+        jenkins:
+          updateCenter:
+            sites:
+              - id: "default"
+                #如 dingding通知则需要配置官方源
+                url: "https://updates.jenkins.io/update-center.json"
+                #url: "https://mirrors.aliyun.com/jenkins/updates/update-center.json"
+      my-jenkins-views: |
+        jenkins:
+          views:
+            - list:
+                name: "FEBEseparation-UAT"
+                description: "FEBE separation UAT view"
+               #jobNames:
+                # - "demo-job"
+                columns:
+                  - "status"
+                  - "weather"
+                  - "jobName"
+                  - "lastSuccess"
+                  - "lastFailure"
+                  - "lastDuration"
+                  - "buildButton"
+            - list:
+                name: "FEBEseparation-Prod"
+                description: "FEBE separation Production view"
+                # jobNames:
+            - list:
+                name: "Microservice-UAT"
+                description: "Microservice UAT view"
+            - list:
+                name: "Microservice-Prod"
+                description: "Microservice Production view"
 
-   #ingress 控制器设置
-   serviceType: ClusterIP
-   servicePort: 8080
-   ingress:
-      enabled: true
-      apiVersion: "networking.k8s.io/v1"
-      hostName: "jenkins.roliyal.com"
-      annotations:
-         nginx.ingress.kubernetes.io/rewrite-target: /
-         nginx.ingress.kubernetes.io/ssl-redirect: "true"
-      tls:
-         - secretName: "jenkins-tls"
-           hosts:
-              - "jenkins.roliyal.com"
+  #ingress 控制器设置
+  serviceType: ClusterIP
+  servicePort: 8080
+  ingress:
+    enabled: true
+    apiVersion: "networking.k8s.io/v1"
+    hostName: "jenkins.roliyal.com"
+    annotations:
+      nginx.ingress.kubernetes.io/rewrite-target: /
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    tls:
+      - secretName: "jenkins-tls"
+        hosts:
+          - "jenkins.roliyal.com"
 
 # RBAC配置-默认开启
 rbac:
-   create: true
+  create: true
 
 # Prometheus监控配置
 prometheus:
-   enabled: true
+  enabled: true
 
 # 备份配置
 backup:
-   enabled: true
-   schedule: "0 2 * * *"
+  enabled: true
+  schedule: "0 2 * * *"
 
 # Jenkins代理配置
 agent:
@@ -405,27 +446,27 @@ agent:
    annotations: {}
    podTemplates:
       podman: |
-         - name: podman
-           label: podman
-           serviceAccount: jenkins
-           containers:
-             - name: podman
-               image: crolord/podman:latest
-               command: "/bin/sh -c"
-               args: "cat"
-               ttyEnabled: true
-               privileged: true
-           volumes:
-             - hostPathVolume:
-                 hostPath: "/sys"
-                 mountPath: "/sys"
+        - name: podman
+          label: podman
+          serviceAccount: jenkins
+          containers:
+            - name: podman
+              image: crolord/podman:latest
+              command: "/bin/sh -c"
+              args: "cat"
+              ttyEnabled: true
+              privileged: true
+          volumes:
+            - hostPathVolume:
+                hostPath: "/sys"
+                mountPath: "/sys"
    volumes:
-      - type: HostPath
-        hostPath: /var/lib/containers
-        mountPath: /var/lib/containers
-      - type: HostPath
-        hostPath: /sys
-        mountPath: /sys 
+     - type: HostPath
+       hostPath: /var/lib/containers
+       mountPath: /var/lib/containers
+     - type: HostPath
+       hostPath: /sys
+       mountPath: /sys 
 ```
 
 提示：根据需要修改 values.yaml 中的配置项

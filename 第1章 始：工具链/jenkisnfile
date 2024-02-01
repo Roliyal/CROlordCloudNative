@@ -1,0 +1,32 @@
+pipeline {
+    agent {
+        kubernetes {
+            inheritFrom 'docker'
+            //customWorkspace '/home/jenkins/agent'
+        }
+    }
+    environment {
+        // 使用 credentials() 方法来引用存储的凭据
+        ACCESS_KEY_ID = credentials('access_key_id')
+        ACCESS_KEY_SECRET = credentials('access_key_secret')
+        TOKEN = credentials('token')
+        // 使用参数
+        IMAGE_ID = "febe"
+        DOMAIN = null
+        REGISTRY_URL = null
+        REGISTRY_USERNAME = null
+        REGISTRY_PWD = null
+        }
+    stages {
+        stage('Build'){
+            steps {script {
+                    container('docker') {
+                     sh 'docker images'
+                    sas(accessKeyId: env.ACCESS_KEY_ID, accessKeySecret: env.ACCESS_KEY_SECRET, imageId: env.IMAGE_ID, token: env.TOKEN, domain: env.DOMAIN, registryUrl: env.REGISTRY_URL, registryUsername: env.REGISTRY_USERNAME, registryPwd: env.REGISTRY_PWD)
+                    }
+            }
+
+            }
+        }
+    }
+}
