@@ -275,11 +275,11 @@ controller:
     - name: secret-credentials
       keyName: github-token
     - name: secret-credentials
-      keyName: ACCESS_KEY_ID      
+      keyName: access_key_id   
     - name: secret-credentials
-      keyName: ACCESS_KEY_SECRET
+      keyName: access_key_secret
     - name: secret-credentials
-      keyName: TOKEN      
+      keyName: token  
   JCasC:
     defaultConfig: true
     configScripts:
@@ -291,22 +291,19 @@ controller:
             - credentials:
               - string:
                   description: "AccessKey ID "
-                  id: "accessKeyid"
+                  id: "access_key_id"
                   scope: GLOBAL
-                  secret: ${secret-credentials-ACCESS_KEY_ID}
-            - credentials:
+                  secret: ${secret-credentials-access_key_id}
               - string:
                   description: "AccessKey Secret"
-                  id: "ACCESS_KEY_SECRET"
+                  id: "access_key_secret"
                   scope: GLOBAL
-                  secret: ${secret-credentials-ACCESS_KEY_SECRET}
-              - credentials:
+                  secret: ${secret-credentials-access_key_secret}
               - string:
-                  description: "TOKEN"
-                  id: "TOKEN"
+                  description: "token"
+                  id: "token"
                   scope: GLOBAL
-                  secret: ${secret-credentials-TOKEN}
-            - credentials:
+                  secret: ${secret-credentials-token}
               - string:
                   description: "Kubernetes Token PROD"
                   id: "k8s_token-prod"
@@ -460,6 +457,21 @@ agent:
             - hostPathVolume:
                 hostPath: "/sys"
                 mountPath: "/sys"
+      docker: |
+        - name: docker
+          label: docker
+          serviceAccount: jenkins
+          containers:
+            - name: docker
+              image: docker:dind
+              command: "/bin/sh -c"
+              args: "cat"
+              ttyEnabled: true
+              privileged: true
+          volumes:
+            - hostPathVolume:
+                hostPath: "/var/run/docker.sock"
+                mountPath: "/var/run/docker.sock"        
    volumes:
      - type: HostPath
        hostPath: /var/lib/containers

@@ -1,32 +1,158 @@
 pipeline {
     agent {
         kubernetes {
-            inheritFrom 'docker'
+            inheritFrom 'podman'
             //customWorkspace '/home/jenkins/agent'
         }
     }
+
     environment {
+        GIT_BRANCH = 'main' // 默认分支
+        MAJOR_VERSION = 'v1' // 主版本号
+        MINOR_VERSION = '0' // 次版本号
+        PLATFORMS = 'linux/amd64'
+        MAJOR = "${params.MAJOR_VERSION ?: env.MAJOR_VERSION ?: '1'}"
+        MINOR = "${params.MINOR_VERSION ?: env.MINOR_VERSION ?: '0'}"
+        //
         // 使用 credentials() 方法来引用存储的凭据
         ACCESS_KEY_ID = credentials('access_key_id')
         ACCESS_KEY_SECRET = credentials('access_key_secret')
         TOKEN = credentials('token')
         // 使用参数
-        IMAGE_ID = "febe"
+        IMAGE_ID = "${params.IMAGE_NAMESPACE}"
         DOMAIN = null
         REGISTRY_URL = null
         REGISTRY_USERNAME = null
         REGISTRY_PWD = null
-        }
-    stages {
-        stage('Build'){
-            steps {script {
-                    container('docker') {
-                     sh 'docker images'
-                    sas(accessKeyId: env.ACCESS_KEY_ID, accessKeySecret: env.ACCESS_KEY_SECRET, imageId: env.IMAGE_ID, token: env.TOKEN, domain: env.DOMAIN, registryUrl: env.REGISTRY_URL, registryUsername: env.REGISTRY_USERNAME, registryPwd: env.REGISTRY_PWD)
-                    }
-            }
+    }
 
+    triggers {
+        githubPush() // github 自动扫描代码是否更新并触发构建任务
+    }
+
+    parameters {
+        string(name: 'BRANCH', defaultValue: 'main', description: 'Git branch to build')
+        choice(name: 'PLATFORMS', choices: ['linux/amd64', 'linux/amd64,linux/arm,linux/ppc64le'], description: 'Target platforms for ACR registry')
+        string(name: 'GIT_REPOSITORY', defaultValue: 'https://github.com/Roliyal/CROlordCodelibrary.git', description: 'Git repository URL')
+        string(name: 'MAJOR_VERSION', defaultValue: '1', description: 'Major version number')
+        string(name: 'MINOR_VERSION', defaultValue: '0', description: 'Minor version number')
+        string(name: 'BUILD_DIRECTORY', defaultValue: 'Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/vue-go-guess-number', description: 'Build directory path')
+        string(name: 'IMAGE_REGISTRY', defaultValue: 'crolord-ack-registry-vpc.cn-hongkong.cr.aliyuncs.com', description: 'The Alibaba ACR registry to use')
+        string(name: 'IMAGE_NAMESPACE', defaultValue: 'febe', description: 'The Alibaba ACR image namespace')
+    }
+
+
+    stages {
+        stage('Version') {
+            steps {
+                script {
+                    // 构建 patch 版本号，使用 Jenkins BUILD_NUMBER 作为构建修订号
+                    env.PATCH_VERSION = env.BUILD_NUMBER
+
+                    // 组合版本号
+                    env.VERSION_NUMBER = "${env.MAJOR}.${env.MINOR}.${env.PATCH_VERSION}"
+                    echo "Current Version: ${env.VERSION_NUMBER}"
+                }
+                }
+
+        }
+        stage('Checkout') {
+            steps {
+                cleanWs() // 清理工作空间
+                script {
+                    env.GIT_BRANCH = params.BRANCH // 使用参数更新环境变量中的分支名称
+                }
+                // 执行 Git 检出
+                checkout scm: [
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${env.GIT_BRANCH}"]],
+                    userRemoteConfigs: [[
+                        url: params.GIT_REPOSITORY
+                    ]],
+                    extensions: [
+                        [$class: 'CloneOption', depth: 1, noTags: false, reference: '', shallow: true]
+                    ]
+                ]
+                echo '代码检出完成'
             }
+        }
+
+
+        stage('Check Directory') {
+            steps {
+                // 打印当前工作目录的路径
+                echo "Current working directory: ${pwd()}"
+
+                // 列出当前工作目录中的文件
+                sh 'ls -l'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sas(accessKeyId: env.ACCESS_KEY_ID, accessKeySecret: env.ACCESS_KEY_SECRET, imageId: env.IMAGE_ID, token: env.TOKEN, domain: env.DOMAIN, registryUrl: env.REGISTRY_URL, registryUsername: env.REGISTRY_USERNAME, registryPwd: env.REGISTRY_PWD)
+            }
+        }
+
+        stage('Build and Push Multi-Arch Docker Image with podman') {
+            steps {
+                script {
+                    container('podman') {
+                        def baseImageTag = "${params.IMAGE_REGISTRY}/${params.IMAGE_NAMESPACE}/${env.JOB_NAME}"
+                        def manifestTag = "${baseImageTag}:${env.MAJOR_VERSION}.${env.MINOR_VERSION}.${env.BUILD_NUMBER}"
+
+                        // 使用部署平台架构
+                        def selectedPlatforms = params.PLATFORMS
+
+                        // 登录 ACR registry
+                        withCredentials([usernamePassword(credentialsId: 'acr_registry_credentials', passwordVariable: 'REGISTRY_PASSWORD', usernameVariable: 'REGISTRY_USERNAME')]) {
+                        // 设置环境变量
+                        env.REGISTRY_USER = REGISTRY_USERNAME
+                        env.REGISTRY_PASS = REGISTRY_PASSWORD
+
+                        // 使用环境变量而不是 Groovy 插值
+                          sh 'podman login --username=$REGISTRY_USER --password=$REGISTRY_PASS ' + params.IMAGE_REGISTRY
+                        }
+
+                        // 构建和推送多架构镜像
+                        dir(params.BUILD_DIRECTORY) {
+                            env.DOCKERFILE = 'Dockerfile'
+                            sh """
+                            podman build --platform=${selectedPlatforms} --tag=${manifestTag} --file $DOCKERFILE .
+                            podman push ${manifestTag}
+                            """
+                        }
+                    }
+                }
+            }
+        }
+
+
+
+
+
+        // 在此处添加其他构建阶段，例如 'Test', 'Deploy' 等...
+    }
+
+    post {
+        always {
+            echo '执行了 always 块'
+        }
+        success {
+            dingtalk(
+                robot: 'c5cdfa6f-1454-4ed0-b135-0189a1035d6d',
+                type: io.jenkins.plugins.enums.MsgTypeEnum.MARKDOWN,
+                title: '构建通知',
+                text: ["### 构建成功", "分支：**${env.GIT_BRANCH}**，版本：**${env.VERSION_NUMBER}**。\n[查看更多信息](${env.BUILD_URL})"]
+            )
+        }
+        failure {
+            dingtalk(
+                robot: 'c5cdfa6f-1454-4ed0-b135-0189a1035d6d',
+                type: io.jenkins.plugins.enums.MsgTypeEnum.MARKDOWN,
+                title: '构建通知',
+                text: ["### 构建失败", "分支：**${env.GIT_BRANCH}**，版本：**${env.VERSION_NUMBER}**。\n[详细错误信息请查看](${env.BUILD_URL})"]
+            )
         }
     }
 }
