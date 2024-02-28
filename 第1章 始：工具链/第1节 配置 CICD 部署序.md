@@ -98,7 +98,7 @@ Update Complete. ⎈Happy Helming!⎈
 [root@issac~]#
 ```
 
-至此，Helm CLI 安装完成，后续相关命令则可参考 [helm](https://helm.sh/zh/docs/intro/install/ ）
+至此，Helm CLI 安装完成，后续相关命令则可参考 [helm](https://helm.sh/zh/docs/intro/install/）
 
 如需要补全命令则需要追加命令补全
 
@@ -130,7 +130,7 @@ jenkins https://charts.jenkins.io
 [root@issac ~]#
 ```
 
-2. 创建基础配置（需配置完成 kubectl 命令工具完成，可以参考官网 [安装和设置 kubectl](https://kubernetes.io/docs/tasks/tools/?spm=5176.2020520152.0.0.49fd16ddyp09xv ）
+2. 创建基础配置（需配置完成 kubectl 命令工具完成，可以参考官网 [安装和设置 kubectl](https://kubernetes.io/docs/tasks/tools/?spm=5176.2020520152.0.0.49fd16ddyp09xv）
 
 2.1 创建 namespace 名称
 ```shell
