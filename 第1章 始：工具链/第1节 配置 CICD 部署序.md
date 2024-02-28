@@ -98,7 +98,7 @@ Update Complete. ⎈Happy Helming!⎈
 [root@issac~]#
 ```
 
-至此，Helm CLI 安装完成，后续相关命令则可参考[helm]（https://helm.sh/zh/docs/intro/install/ ）
+至此，Helm CLI 安装完成，后续相关命令则可参考[helm](https://helm.sh/zh/docs/intro/install/ ）
 
 如需要补全命令则需要追加命令补全
 
