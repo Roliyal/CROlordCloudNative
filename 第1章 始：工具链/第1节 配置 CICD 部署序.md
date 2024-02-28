@@ -108,7 +108,7 @@ helm completion bash > /etc/bash_completion.d/helm
 
 #### 步骤二：部署  helm chart Jenkins
 
-1. 配置helm repo 地址以及更新本地索引
+1. 配置helm repo 地址以及更新本地索引 （上述步骤完成后，此步骤可忽略）
 
 ```shell
 helm repo add jenkins https://charts.jenkins.io
@@ -130,7 +130,7 @@ jenkins https://charts.jenkins.io
 [root@issac ~]#
 ```
 
-2. 创建基础配置
+2. 创建基础配置（需配置完成 kubectl 命令工具完成，可以参考官网[安装和设置 kubectl](https://kubernetes.io/docs/tasks/tools/?spm=5176.2020520152.0.0.49fd16ddyp09xv) ）
 
 2.1 创建 namespace 名称
 ```shell
