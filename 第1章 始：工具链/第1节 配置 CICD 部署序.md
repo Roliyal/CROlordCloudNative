@@ -62,7 +62,7 @@
 | 数据持久化 | 需要配置存储卷以保证数据的持久化和可靠性               |
 | 安全设置   | 部署后需要进行安全设置，如开启安全认证、插件安装等等   |
 
-#### 步骤一：部署 Jenkins
+#### 步骤一：部署 Helm
 
 - 部署 Helm
 
@@ -130,8 +130,7 @@ jenkins https://charts.jenkins.io
 [root@issac ~]#
 ```
 
-2. 创建基础配置（需配置完成 kubectl 命令工具完成，可以参考官网 [安装和设置 kubectl](https://kubernetes.io/docs/tasks/tools/?spm=5176.2020520152.0.0.49fd16ddyp09xv)
-二 附加配置 Kubectl
+2. 创建基础配置（需配置完成 kubectl 命令工具完成，可以参考官网 [安装和设置 kubectl](https://kubernetes.io/docs/tasks/tools/?spm=5176.2020520152.0.0.49fd16ddyp09xv) 可参考附加配置 Kubectl
 ```shell
 
 # 下载kubectl二进制文件
@@ -149,6 +148,9 @@ sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 # 创建.kube目录并编辑config文件，配置集群凭证到计算机 $HOME/.kube/config 文件下。
 mkdir -p $(dirname $HOME/.kube/config) && vim $HOME/.kube/config
 
+#将文件的权限设置为只有拥有者可以读写，解决安全警告的问题。
+chmod 600 /root/.kube/config
+
 # 获取节点信息（可选，仅在kubectl配置正确时有效）
 kubectl get node
 
@@ -157,14 +159,14 @@ kubectl get node
 ```shell
 kubectl create ns cicd
 ```
-2.2 创建证书（可以根据需求配置）
+2.2 jenkins域名访问创建 HTTPS 证书（可以根据需求配置）
 ```shell
 kubectl create secret tls [YOUR_TLS_SECRET_NAME] \
   --cert=path/to/cert/file.crt \
   --key=path/to/key/file.key \
   -n cicd
 ```
-2.3 创建密码凭据
+2.3 jenkins Web页面创建密码凭据
 ```shell
 kubectl create secret generic jenkins-admin-secret \
   --from-literal=jenkins-admin-user=admin \
@@ -190,17 +192,44 @@ EOF
 ```
 示例
 ```shell
-kubectl create secret tls jenkins-tls \
-  --cert=/opt/tls/jenkins.roliyal.com.crt \
-  --key=/opt/tls/jenkins.roliyal.com.key \
-  -n cicd
----
-[root@CROLord-To-ACK tls]# kubectl create ns cicd
+
+[root@CROLord]# kubectl create ns cicd
 namespace/cicd created
-[root@CROLord-To-ACK tls]# kubectl create secret tls jenkins-tls   --cert=/opt/tls/jenkins.roliyal.com.crt   --key=/opt/tls/jenkins.roliyal.com.key   -n cicd
-secret/jenkins-tls created
-[root@CROLord-To-ACK tls]# 
+[root@CROLord]# kubectl create secret tls jenkinstls   --cert=/opt/tls/jenkins.roliyal.com.crt   --key=/opt/tls/jenkins.roliyal.com.key   -n cicd
+secret/jenkinstls created
+# kubectl create secret tls jenkinstls   --cert=/root/opt/jenkins.roliyal.com_bundle.crt   --key=/root/opt/jenkins.roliyal.com.key   -n cicd
+secret/jenkinstls created
+[root@CROLord opt]# kubectl create secret generic jenkins-admin-secret \
+>   --from-literal=jenkins-admin-user=admin \
+>   --from-literal=jenkins-admin-password=CRLord@123 \
+>   -n cicd
+secret/jenkins-admin-secret created
+[root@CROLord opt]# 
+[root@CROLord opt]# ll
+total 12
+-rw-r--r-- 1 root root 4097 Feb 28 17:46 jenkins.roliyal.com_bundle.crt
+-rw-r--r-- 1 root root 1706 Feb 28 17:46 jenkins.roliyal.com.key
+[root@CROLord opt]# pwd
+/root/opt
+[root@CROLord opt]# kubectl apply -f - <<EOF
+> apiVersion: v1
+> kind: PersistentVolumeClaim
+> metadata:
+>   name: jenkins-data
+>   namespace: cicd
+> spec:
+>   accessModes:
+>     - ReadWriteOnce
+>   resources:
+>     requests:
+>       storage: 50Gi
+>   storageClassName: alicloud-disk-ssd
+> EOF
+persistentvolumeclaim/jenkins-data created
+[root@CROLord opt]# 
+
 ```
+
 ###### 额外配置示例，用于初始化创建 secret ，此示例为 credentials 全局凭据信息，相关信息根据实际情况配置
 ```shell
 kubectl create secret generic secret-credentials -n cicd \
@@ -235,10 +264,11 @@ total 20
 secret/secret-credentials created
 [root@CROLord-To-ACK tls]# kubectl get secret secret-credentials -n cicd -o jsonpath="{.data.acr-username}" | base64 --decode
 
-```
 
 ##### 将 path/to/cert/file.crt 和 path/to/key/file.key 替换为您的证书文件和密钥文件的实际路径，并将 [YOUR_TLS_SECRET_NAME] 替换为您想要给 Secret 的名称。更新 Helm 命令中的 [YOUR_TLS_SECRET_NAME] 为您刚刚创建的 Secret 的名称。
+
 2.5 配置 values 配置清单
+
 ```yaml
 # jenkins-values.yaml
 
