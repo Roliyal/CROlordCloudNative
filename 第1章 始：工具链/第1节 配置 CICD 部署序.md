@@ -190,7 +190,7 @@ spec:
   storageClassName: alicloud-disk-ssd
 EOF
 ```
-示例
+示例配置
 ```shell
 
 [root@CROLord]# kubectl create ns cicd
@@ -226,226 +226,281 @@ total 12
 >   storageClassName: alicloud-disk-ssd
 > EOF
 persistentvolumeclaim/jenkins-data created
-[root@CROLord opt]# 
+[root@CROLord opt]# sudo docker login --username=eb** crolord ACR 镜像地址.cn-hongkong.cr.aliyuncs.com 
+Password: 
+WARNING! Your password will be stored unencrypted in /root/.docker/config.json.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/engine/reference/commandline/login/#credentials-store
 
+Login Succeeded
+[root@CROLord opt]#  ll /root/.docker/config.json 
+-rw-r--r-- 1 root root 145 Mar 20 16:13 /root/.docker/config.json
+[root@CROLord opt]# cat /root/.docker/config.json 
+{
+        "auths": {
+                "crolord-rACR 镜像地址kong.cr.aliyuncs.com": {
+                        "auth": "Z********认证信息***w=="
+                }
+        }
+}
+[root@CROLord opt]#kubectl  create secret generic kaniko-secret --from-file=/root/.docker/config.json -n cicd 
+secret/kaniko-secret created
 ```
 
-###### 额外配置示例，用于初始化创建 secret ，此示例为 credentials 全局凭据信息，相关信息根据实际情况配置
+###### 配置示例，用于初始化创建 secret ，此示例为 Jenkins credentials 全局凭据信息，相关信息根据实际情况配置
 ```shell
 kubectl create secret generic secret-credentials -n cicd \
-  --from-file=k8s-prod-config=/opt/tls/config/crolord-ack-prod.yaml 本文演示使用生产环境 ACKkubeconfig 配置文件 \
-  --from-file=k8s-uat-config=/opt/tls/config/crolord-ack-uat.yaml 本文演示使用测试环境 ACKkubeconfig 配置文件 \
-  --from-file=github-token=/opt/tls/config/github.txt 本文演示使用github token 使用 \
-  --from-literal=acr-username=TFRBSTV0OFJjcWkyeEtpNWtR 本文演示使用阿里云账号用于ACR登录账号（echo -n 'your_acr_username' | base64 生成，需要根据实际字段改变） \
-  --from-literal=acr-password=TFRBSTV0OFJjcWkyeEtpNWtR /opt/tls/config本文演示使用阿里云账号用于ACR登录密码（echo -n 'your_acr_password' | base64 生成，需要根据实际字段改变）
+  --from-file=k8s-prod-config=/root/opt/crolord_prod.yaml  \
+  --from-file=k8s-uat-config=/root/opt/crolord-ack-uat.yaml  \
+  --from-file=github-token=/root/opt/github.txt \
+  --from-literal=acr-username=ZWJAasdasda2NTkyMQ== \
+  --from-literal=acr-password=Q1JzxczxcxMjM= \
 ```
+- `k8s-prod-config` 和 `k8s-uat-config` 参数用于添加生产环境和测试环境的 Kubernetes config配置文件。
+- `github-token` 参数添加一个认证 GitHub 令牌文件。
+- `acr-username` 和 `acr-password` 用于添加经过 Base64 编码的阿里云容器注册服务(ACR)的登录凭证。请确保根据实际情况替换这些值。
+
+
+Base64 编码是一种将二进制数据转换成纯文本格式的编码方法。要生成 Base64 编码的字符串，你可以使用命令行工具或在线服务。对于命令行，如在 Linux 或 macOS 上，可以使用 base64 命令。例如，要对 "your_text" 进行编码，可以使用以下命令：
+
+```shell
+echo -n 'your_text' | base64
+```
+这里，echo -n 确保不在输出中包含新行字符，base64 命令将输入的文本转换成 Base64 编码。对于 Windows，可以使用 PowerShell 的 ConvertTo-Base64 命令。
+
+
 ###### 补充 ACR 容器镜像服务安全扫描全局凭据，以下数据通过 "echo -n 'your_access_key_id' | base64 生成，需要根据实际字段改变
 ```shell
 kubectl patch secret secret-credentials -n cicd --patch='
  data:
-   access_key_id: "TFRASDASDSADACCZ4NVhy"
-   access_key_secret: "RHJuTASDASCZXCZCadasdbkRuMlR0"
-   token: "M2VkMASCADASDSXSADASDASZXCVjNzVjasdA4"
+   access_key_id: "eW91cl9hY2Nlc3Nfa2V5X2lk"
+   access_key_secret: "eW91cl9hY2Nlc3Nfa2V5X2lk"
+   token: "eW91cl9hY2Nlc3Nfa2V5X2lk"
  '
 ```
-###示例  
-[root@CROLord-To-ACK tls]# ll config/
-total 20
--rw-r--r-- 1 root root 8003 Dec  6 16:28 crolord-ack-prod.yaml
--rw-r--r-- 1 root root 8005 Dec  6 16:29 crolord-ack-uat.yaml
--rw-r--r-- 1 root root   94 Dec  6 16:31 github.txt
-[root@CROLord-To-ACK tls]# kubectl create secret generic secret-credentials \
-> --from-file=k8s-prod-config=config/crolord-ack-prod.yaml \
-> --from-file=k8s-uat-config=config/crolord-ack-uat.yaml \
-> --from-literal=acr-username='本文演示使用阿里云账号用于ACR登录账号' \
-> --from-literal=acr-password='本文演示使用阿里云账号用于ACR登录密码' \
-> --from-file=github-token=config/github.txt \
-> -n cicd
+### 预期验证 secret-credentials 生效
+[root@CROLord opt]# ll
+total 32
+-rw-r--r-- 1 root root 8002 Mar 15 20:58 crolord_prod.yaml
+-rw-r--r-- 1 root root 8002 Mar 15 20:57 crolord_uat.yaml
+-rw-r--r-- 1 root root   22 Mar 15 21:00 github.txt
+-rw-r--r-- 1 root root 4097 Feb 28 17:46 jenkins.roliyal.com_bundle.crt
+-rw-r--r-- 1 root root 1706 Feb 28 17:46 jenkins.roliyal.com.key
+[root@CROLord opt]# kubectl create secret generic secret-credentials -n cicd \
+>   --from-file=k8s-prod-config=/root/opt/crolord_prod.yaml  \
+>   --from-file=k8s-uat-config=/root/opt/crolord_uat.yaml \
+>   --from-file=github-token=/root/opt/github.txt \
+>   --from-literal=acr-username=ZW***********yMQ== \
+>   --from-literal=acr-password=Q1******xMjM=
 secret/secret-credentials created
-[root@CROLord-To-ACK tls]# kubectl get secret secret-credentials -n cicd -o jsonpath="{.data.acr-username}" | base64 --decode
+[root@CROLord opt]# kubectl get secret secret-credentials -n cicd -o jsonpath="{.data.acr-username}" | base64 --decode
 
 
-##### 将 path/to/cert/file.crt 和 path/to/key/file.key 替换为您的证书文件和密钥文件的实际路径，并将 [YOUR_TLS_SECRET_NAME] 替换为您想要给 Secret 的名称。更新 Helm 命令中的 [YOUR_TLS_SECRET_NAME] 为您刚刚创建的 Secret 的名称。
-
-2.5 配置 values 配置清单
+2.5 配置 Helm Jenkins values 配置清单
 
 ```yaml
 # jenkins-values.yaml
 
 # 持久化存储配置
 persistence:
-  enabled: true
-  storageClass: "alicloud-disk-ssd"
-  accessMode: ReadWriteOnce
-  size: "50Gi"
-  # subPath: "jenkins_home"
-  # 以下部分为高级配置，如不需要可保持当前状态
-  existingClaim:
-  annotations: {}
-  labels: {}
-  dataSource:
-  volumes:
-  mounts:
+   enabled: true
+   storageClass: "alicloud-disk-topology-alltype" #依次尝试创建指定的存储类型，并且使用WaitForFirstConsumer模式，可以兼容多可用区集群。
+   accessMode: ReadWriteOnce
+   size: "100Gi"
+   #subPath: "jenkins_home"
+   # 以下部分为高级配置，如不需要可保持当前状态
+   #existingClaim: jenkins-data
+   annotations: {}
+   labels: {}
+   dataSource:
+   volumes:
+   mounts:
 
 # JCasC 配置项
 controller:
-  # JCasC - 用户登录密码用户名配置
-  adminSecret: true
-  admin:
-    existingSecret: "jenkins-admin-secret"
-    userKey: "jenkins-admin-user"
-    passwordKey: "jenkins-admin-password"
-  #配置时区
-  javaOpts: "-Duser.timezone=Asia/Shanghai"
-  #配置插件
-  installPlugins:
-    - workflow-multibranch:770.v1a_d0708dd1f6     
-    - kubernetes:4151.v6fa_f0fb_0b_4c9
-    - workflow-aggregator:latest
-    - git:5.2.1
-    - configuration-as-code:1756.v2b_7eea_874392
-    - job-dsl:1.87
-    - docker-build-publish:1.3.1
-    - sshd:3.312.v1c601b_c83b_0e
-    - ws-cleanup:0.45
-    - github:1.37.3.1
-    - build-name-setter:2.4.0
-    - versionnumber:1.11
-    - dingding-notifications:2.6.2
-    - docker-workflow:572.v950f58993843
-  existingSecret: "secret-credentials"
-  additionalExistingSecrets:
-    - name: secret-credentials
-      keyName: acr-username
-    - name: secret-credentials
-      keyName: acr-password
-    - name: secret-credentials
-      keyName: k8s-uat-config
-    - name: secret-credentials
-      keyName: k8s-prod-config
-    - name: secret-credentials
-      keyName: github-token
-    - name: secret-credentials
-      keyName: access_key_id   
-    - name: secret-credentials
-      keyName: access_key_secret
-    - name: secret-credentials
-      keyName: token  
-  JCasC:
-    defaultConfig: true
-    configScripts:
-      #用于定义预设jenkins 全局凭据，此选项为可选，如不需要则删除这段配置
-      jenkins-casc-configs-credentials: |
-        credentials:
-          system:
-            domainCredentials:
-            - credentials:
-              - string:
-                  description: "AccessKey ID "
-                  id: "access_key_id"
-                  scope: GLOBAL
-                  secret: ${secret-credentials-access_key_id}
-              - string:
-                  description: "AccessKey Secret"
-                  id: "access_key_secret"
-                  scope: GLOBAL
-                  secret: ${secret-credentials-access_key_secret}
-              - string:
-                  description: "token"
-                  id: "token"
-                  scope: GLOBAL
-                  secret: ${secret-credentials-token}
-              - string:
-                  description: "Kubernetes Token PROD"
-                  id: "k8s_token-prod"
-                  scope: GLOBAL
-                  secret: ${secret-credentials-k8s-prod-config}
-              - string:
-                  description: "Kubernetes Token UAT"
-                  id: "k8s_token_uat"
-                  scope: GLOBAL
-                  secret: ${secret-credentials-k8s-uat-config}
-              - string:
-                  description: "GitHub Token or Gitlab Token"
-                  id: "github_token"
-                  scope: GLOBAL
-                  secret: ${secret-credentials-github-token}
-              - usernamePassword:
-                  description: "ACR Registry Credentials"
-                  id: "acr_registry_credentials"
-                  password: ${secret-credentials-acr-password}
-                  scope: GLOBAL
-                  username: ${secret-credentials-acr-username}
-      my-jobs: |
-        jobs:
-          - script: >
-              job('demo-job') {
-                  steps {
-                      shell('echo Hello World')
+   usePodSecurityContext: true
+   containerSecurityContext:
+      runAsUser: 1000
+      runAsGroup: 1000
+      readOnlyRootFilesystem: true
+      allowPrivilegeEscalation: true
+      #nodeSelector:
+      #kubernetes.io/hostname: "cn-hongkong.172.16.0.84"
+   # Used for label app.kubernetes.io/component
+   componentName: "jenkins-controller"
+   image:
+      registry: "docker.io"
+      repository: "jenkins/jenkins"
+      tag: "2.451"
+      #tag: "2.444"
+      #tagLabel: jdk17
+      pullPolicy: "Always"
+   # JCasC - 用户登录密码用户名配置
+   #adminSecret: true
+   #createSecret: true
+   admin:
+      createSecret: true
+      existingSecret: "jenkins-admin-secret"
+      userKey: "jenkins-admin-user"
+      passwordKey: "jenkins-admin-password"
+   #配置时区
+   javaOpts: "-Duser.timezone=Asia/Shanghai -Dorg.jenkinsci.plugins.durabletask.BourneShellScript.USE_BINARY_WRAPPER=true"
+   #配置插件
+   installPlugins:
+      - workflow-multibranch:783.va_6eb_ef636fb_d
+      - kubernetes:4203.v1dd44f5b_1cf9
+      - workflow-aggregator:latest
+      - git:5.2.1
+      - configuration-as-code:1775.v810dc950b_514
+      - job-dsl:1.87
+      - docker-build-publish:1.4.0
+      - sshd:3.322.v159e91f6a_550
+      - ws-cleanup:0.45
+      - gson-api:2.10.1-15.v0d99f670e0a_7
+      - github:1.38.0
+      - build-name-setter:2.4.1
+      - versionnumber:1.11
+      - dingding-notifications:2.7.3
+      - docker-workflow:572.v950f58993843
+      - kubernetes-credentials-provider:1.262.v2670ef7ea_0c5
+      - github-branch-source:1785.v99802b_69816c
+      - build-name-setter:2.4.2
+   existingSecret: "secret-credentials"
+   additionalExistingSecrets:
+      - name: secret-credentials
+        keyName: ACR_USERNAME
+      - name: secret-credentials
+        keyName: ACR_PASSWORD
+      - name: secret-credentials
+        keyName: k8s-uat-config
+      - name: secret-credentials
+        keyName: k8s-prod-config
+      - name: secret-credentials
+        keyName: github-token
+      - name: secret-credentials
+        keyName: access_key_id
+      - name: secret-credentials
+        keyName: access_key_secret
+      - name: secret-credentials
+        keyName: token
+   JCasC:
+      defaultConfig: true
+      configScripts:
+         #用于定义预设jenkins 全局凭据，此选项为可选，如不需要则删除这段配置
+         jenkins-casc-configs-credentials: |
+            credentials:
+              system:
+                domainCredentials:
+                - credentials:
+                  - string:
+                      description: "AccessKey ID "
+                      id: "access_key_id"
+                      scope: GLOBAL
+                      secret: ${secret-credentials-access_key_id}
+                  - string:
+                      description: "AccessKey Secret"
+                      id: "access_key_secret"
+                      scope: GLOBAL
+                      secret: ${secret-credentials-access_key_secret}
+                  - string:
+                      description: "token"
+                      id: "token"
+                      scope: GLOBAL
+                      secret: ${secret-credentials-token}
+                  - string:
+                      description: "Kubernetes Token PROD"
+                      id: "k8s_token-prod"
+                      scope: GLOBAL
+                      secret: ${secret-credentials-k8s-prod-config}
+                  - string:
+                      description: "Kubernetes Token UAT"
+                      id: "k8s_token_uat"
+                      scope: GLOBAL
+                      secret: ${secret-credentials-k8s-uat-config}
+                  - string:
+                      description: "GitHub Token or Gitlab Token"
+                      id: "github_token"
+                      scope: GLOBAL
+                      secret: ${secret-credentials-github-token}
+                  - usernamePassword:
+                      description: "ACR Registry Credentials"
+                      id: "acr_registry_credentials"
+                      password: ${secret-credentials-ACR_PASSWORD}
+                      scope: GLOBAL
+                      username: ${secret-credentials-ACR_USERNAME}
+         my-jobs: |
+            jobs:
+              - script: >
+                  job('demo-job') {
+                      steps {
+                          shell('echo Hello World')
+                      }
                   }
-              }
-      update-center: |
-        jenkins:
-          updateCenter:
-            sites:
-              - id: "default"
-                #如 dingding通知则需要配置官方源
-                url: "https://updates.jenkins.io/update-center.json"
-                #url: "https://mirrors.aliyun.com/jenkins/updates/update-center.json"
-      my-jenkins-views: |
-        jenkins:
-          views:
-            - list:
-                name: "FEBEseparation-UAT"
-                description: "FEBE separation UAT view"
-               #jobNames:
-                # - "demo-job"
-                columns:
-                  - "status"
-                  - "weather"
-                  - "jobName"
-                  - "lastSuccess"
-                  - "lastFailure"
-                  - "lastDuration"
-                  - "buildButton"
-            - list:
-                name: "FEBEseparation-Prod"
-                description: "FEBE separation Production view"
-                # jobNames:
-            - list:
-                name: "Microservice-UAT"
-                description: "Microservice UAT view"
-            - list:
-                name: "Microservice-Prod"
-                description: "Microservice Production view"
+         update-center: |
+            jenkins:
+              updateCenter:
+                sites:
+                  - id: "default"
+                    #如 dingding通知则需要配置官方源
+                    url: "https://updates.jenkins.io/update-center.json"
+                    #url: "https://mirrors.aliyun.com/jenkins/updates/update-center.json"
+         my-jenkins-views: |
+            jenkins:
+              views:
+                - list:
+                    name: "FEBEseparation-UAT"
+                    description: "FEBE separation UAT view"
+                   #jobNames:
+                    # - "demo-job"
+                    columns:
+                      - "status"
+                      - "weather"
+                      - "jobName"
+                      - "lastSuccess"
+                      - "lastFailure"
+                      - "lastDuration"
+                      - "buildButton"
+                - list:
+                    name: "FEBEseparation-Prod"
+                    description: "FEBE separation Production view"
+                    # jobNames:
+                - list:
+                    name: "Microservice-UAT"
+                    description: "Microservice UAT view"
+                - list:
+                    name: "Microservice-Prod"
+                    description: "Microservice Production view"
 
-  #ingress 控制器设置
-  serviceType: ClusterIP
-  servicePort: 8080
-  ingress:
-    enabled: true
-    apiVersion: "networking.k8s.io/v1"
-    hostName: "jenkins.roliyal.com"
-    annotations:
-      nginx.ingress.kubernetes.io/rewrite-target: /
-      nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    tls:
-      - secretName: "jenkins-tls"
-        hosts:
-          - "jenkins.roliyal.com"
+   #ingress 控制器设置
+   serviceType: ClusterIP
+   servicePort: 8080
+   ingress:
+      enabled: true
+      apiVersion: "networking.k8s.io/v1"
+      hostName: "jenkins.roliyal.com"
+      annotations:
+         nginx.ingress.kubernetes.io/rewrite-target: /
+         nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      ingressClassName: mse
+      tls:
+         - secretName: "jenkins-tls"
+           hosts:
+              - "jenkins.roliyal.com"
 
 # RBAC配置-默认开启
 rbac:
-  create: true
+   create: true
+   readSecrets: true
+
 
 # Prometheus监控配置
 prometheus:
-  enabled: true
+   enabled: true
 
 # 备份配置
-backup:
-  enabled: true
-  schedule: "0 2 * * *"
+#backup:
+# enabled: true
+# schedule: "0 2 * * *"
 
 # Jenkins代理配置
 agent:
@@ -456,35 +511,38 @@ agent:
    kubernetesConnectTimeout: 5
    kubernetesReadTimeout: 15
    maxRequestsPerHostStr: "32"
-   namespace:
-   image: "jenkins/inbound-agent"
-   tag: "latest"
+   namespace: cicd
+   #image: "jenkins/inbound-agent"
+   #tag: "latest"
+   image:
+      repository: "jenkins/inbound-agent"
+      tag: "latest"
    workingDir: "/home/jenkins/agent"
    nodeUsageMode: "NORMAL"
    customJenkinsLabels: []
    imagePullSecretName:
    componentName: "jenkins-agent"
    websocket: false
-   privileged: false
-   runAsUser:
-   runAsGroup:
+   privileged: true
+   runAsUser: 0
+   runAsGroup: 0
    resources:
       requests:
-         cpu: "512m"
-         memory: "512Mi"
+         cpu: "1024m" #临时测试调整
+         memory: "1024Mi" #临时测试调整
       limits:
-         cpu: "512m"
-         memory: "512Mi"
-   alwaysPullImage: false
+         cpu: "4096" #临时测试调整
+         memory: "4096Mi" #临时测试调整
+   alwaysPullImage: true
    podRetention: "Never"
-   showRawYaml: true
+   showRawYaml: false
    workspaceVolume: {}
    envVars: []
-   nodeSelector: {}
+   #nodeSelector: {}
    command:
    args: "${computer.jnlpmac} ${computer.name}"
    sideContainerName: "jnlp"
-   TTYEnabled: false
+   TTYEnabled: true
    containerCap: 10
    podName: "jenkins-slave"
    idleMinutes: 0
@@ -493,43 +551,96 @@ agent:
    connectTimeout: 100
    annotations: {}
    podTemplates:
+      kanikoarm: |
+         - name: kanikoarm
+           label: kanikoarm
+           serviceAccount: jenkins
+           nodeSelector: "beta.kubernetes.io/arch=arm64"
+           containers:
+             - name: kanikoarm
+               image: gcr.io/kaniko-project/executor:v1.22.0-debug
+               command: "sh -c"
+               args: "cat"
+               ttyEnabled: true
+               privileged: false
+               #resourceRequestCpu: "1000m"
+               #resourceRequestMemory: "512Mi"
+               #resourceLimitCpu: "2"
+               #resourceLimitMemory: "2048Mi"
+             - name: jnlp
+               image: jenkins/inbound-agent:latest
+               command: "jenkins-agent"
+               args: ""
+               ttyEnabled: true
+               privileged: false
+           volumes:
+             - secretVolume:
+                 secretName: kaniko-secret
+                 mountPath: "/kaniko/.docker"
+      kanikoamd: |
+         - name: kanikoamd
+           label: kanikoamd
+           serviceAccount: jenkins
+           nodeSelector: "beta.kubernetes.io/arch=amd64"
+           containers:
+             - name: kanikoamd
+               image: crolord/kanikomanifest-tool:v1.0.9
+               command: "sh -c"
+               args: "cat"
+               ttyEnabled: true
+               privileged: false
+               #resourceRequestCpu: "1000m"
+               #resourceRequestMemory: "512Mi" 
+               #resourceLimitCpu: "2"
+               #resourceLimitMemory: "2048Mi"
+             - name: jnlp
+               image: jenkins/inbound-agent:latest
+               command: "jenkins-agent"
+               args: ""
+               ttyEnabled: true
+               privileged: false
+           volumes:
+             - secretVolume:
+                 secretName: kaniko-secret
+                 mountPath: "/kaniko/.docker"               
       podman: |
-        - name: podman
-          label: podman
-          serviceAccount: jenkins
-          containers:
-            - name: podman
-              image: crolord/podman:latest
-              command: "/bin/sh -c"
-              args: "cat"
-              ttyEnabled: true
-              privileged: true
-          volumes:
-            - hostPathVolume:
-                hostPath: "/sys"
-                mountPath: "/sys"
+         - name: podman
+           label: podman
+           serviceAccount: default
+           nodeSelector: "beta.kubernetes.io/arch=amd64"
+           containers:
+             - name: podman
+               image: crolord/podman:latest
+               command: "/bin/sh -c"
+               args: "cat"
+               ttyEnabled: true
+               privileged: true
+           volumes:
+             - hostPathVolume:
+                 hostPath: "/sys"
+                 mountPath: "/sys"
       docker: |
-        - name: docker
-          label: docker
-          serviceAccount: jenkins
-          containers:
-            - name: docker
-              image: docker:dind
-              command: "/bin/sh -c"
-              args: "cat"
-              ttyEnabled: true
-              privileged: true
-          volumes:
-            - hostPathVolume:
-                hostPath: "/var/run/docker.sock"
-                mountPath: "/var/run/docker.sock"        
+         - name: docker
+           label: docker
+           serviceAccount: default
+           containers:
+             - name: docker
+               image: docker:dind
+               command: "/bin/sh -c"
+               args: "cat"
+               ttyEnabled: true
+               privileged: true
+           volumes:
+             - hostPathVolume:
+                 hostPath: "/var/run/docker.sock"
+                 mountPath: "/var/run/docker.sock"
    volumes:
-     - type: HostPath
-       hostPath: /var/lib/containers
-       mountPath: /var/lib/containers
-     - type: HostPath
-       hostPath: /sys
-       mountPath: /sys 
+      - type: HostPath
+        hostPath: /var/lib/containers
+        mountPath: /var/lib/containers
+      - type: HostPath
+        hostPath: /sys
+        mountPath: /sys
 ```
 
 提示：根据需要修改 values.yaml 中的配置项
@@ -571,6 +682,7 @@ helm -n cicd install    jenkins jenkins/jenkins -f /opt/tls/jenkins-values.yaml
 ```
 
 正常访问上述配置域名地址查看是否符合预期
+
 ##### 方案二基于 ECS 服务器构建 docker-compose-Jenkins
 
 - 部署 docker && docker-compose

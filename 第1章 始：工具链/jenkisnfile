@@ -15,9 +15,9 @@ pipeline {
         MINOR = "${params.MINOR_VERSION ?: env.MINOR_VERSION ?: '0'}"
         //
         // 使用 credentials() 方法来引用存储的凭据
-        ACCESS_KEY_ID = credentials('access_key_id')
-        ACCESS_KEY_SECRET = credentials('access_key_secret')
-        TOKEN = credentials('token')
+        //ACCESS_KEY_ID = credentials('access_key_id')
+        //ACCESS_KEY_SECRET = credentials('access_key_secret')
+        //TOKEN = credentials('token')
         // 使用参数
         IMAGE_ID = "${params.IMAGE_NAMESPACE}"
         DOMAIN = null
@@ -88,16 +88,16 @@ pipeline {
             }
         }
 
-        stage('Build') {
-            steps {
-                sas(accessKeyId: env.ACCESS_KEY_ID, accessKeySecret: env.ACCESS_KEY_SECRET, imageId: env.IMAGE_ID, token: env.TOKEN, domain: env.DOMAIN, registryUrl: env.REGISTRY_URL, registryUsername: env.REGISTRY_USERNAME, registryPwd: env.REGISTRY_PWD)
-            }
-        }
+        //stage('Build') {
+           // steps {
+                //sas(accessKeyId: env.ACCESS_KEY_ID, accessKeySecret: env.ACCESS_KEY_SECRET, imageId: env.IMAGE_ID, token: env.TOKEN, domain: env.DOMAIN, registryUrl: env.REGISTRY_URL, registryUsername: env.REGISTRY_USERNAME, registryPwd: env.REGISTRY_PWD)
+          //  }
+        //}
 
         stage('Build and Push Multi-Arch Docker Image with podman') {
             steps {
                 script {
-                    container('podman') {
+                    container('docker') {
                         def baseImageTag = "${params.IMAGE_REGISTRY}/${params.IMAGE_NAMESPACE}/${env.JOB_NAME}"
                         def manifestTag = "${baseImageTag}:${env.MAJOR_VERSION}.${env.MINOR_VERSION}.${env.BUILD_NUMBER}"
 
@@ -111,15 +111,15 @@ pipeline {
                         env.REGISTRY_PASS = REGISTRY_PASSWORD
 
                         // 使用环境变量而不是 Groovy 插值
-                          sh 'podman login --username=$REGISTRY_USER --password=$REGISTRY_PASS ' + params.IMAGE_REGISTRY
+                          sh 'docker login --username=$REGISTRY_USER --password=$REGISTRY_PASS ' + params.IMAGE_REGISTRY
                         }
 
                         // 构建和推送多架构镜像
                         dir(params.BUILD_DIRECTORY) {
                             env.DOCKERFILE = 'Dockerfile'
                             sh """
-                            podman build --platform=${selectedPlatforms} --tag=${manifestTag} --file $DOCKERFILE .
-                            podman push ${manifestTag}
+                            docker build --platform=${selectedPlatforms} --tag=${manifestTag} --file $DOCKERFILE .
+                            docker push ${manifestTag}
                             """
                         }
                     }
@@ -147,7 +147,7 @@ pipeline {
             )
         }
         failure {
-            dingtalk(
+            dingtalk(   
                 robot: 'c5cdfa6f-1454-4ed0-b135-0189a1035d6d',
                 type: io.jenkins.plugins.enums.MsgTypeEnum.MARKDOWN,
                 title: '构建通知',
