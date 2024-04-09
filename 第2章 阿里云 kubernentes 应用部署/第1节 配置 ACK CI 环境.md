@@ -115,12 +115,19 @@ pipeline {
                         unstash 'source-code' // 恢复之前存储的代码
                         container('kanikoamd') {
                             sh """
-                            kaniko \\
-                                --context ${env.WORKSPACE}/${params.BUILD_DIRECTORY} \\
-                                --dockerfile ${params.BUILD_DIRECTORY}/Dockerfile \\
-                                --destination ${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${VERSION_TAG}-amd64 \\
-                                --skip-tls-verify \\
-                                --custom-platform=linux/amd64
+                                kaniko \
+                                  --context ${env.WORKSPACE}/${params.BUILD_DIRECTORY} \
+                                  --dockerfile ${params.BUILD_DIRECTORY}/Dockerfile \
+                                  --destination ${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${VERSION_TAG}-amd64 \
+                                  --cache=true \
+                                  --cache-repo=${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/cache \
+                                  --skip-tls-verify \
+                                  --skip-unused-stages=true \
+                                  --custom-platform=linux/amd64 \
+                                  --build-arg BUILDKIT_INLINE_CACHE=1 \
+                                  --snapshotMode=redo \
+                                  --log-format=text \
+                                  --verbosity=info
                             """
                         }
                     }
@@ -132,12 +139,19 @@ pipeline {
                         unstash 'source-code'
                         container('kanikoarm') {
                             sh """
-                            /kaniko/executor \\
-                                --context ${env.WORKSPACE}/${params.BUILD_DIRECTORY} \\
-                                --dockerfile ${params.BUILD_DIRECTORY}/Dockerfile \\
-                                --destination ${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${VERSION_TAG}-arm64 \\
-                                --skip-tls-verify \\
-                                --custom-platform=linux/arm64
+                            /kaniko/executor \
+                              --context ${env.WORKSPACE}/${params.BUILD_DIRECTORY} \
+                              --dockerfile ${params.BUILD_DIRECTORY}/Dockerfile \
+                              --destination ${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${VERSION_TAG}-arm64 \
+                              --cache=true \
+                              --cache-repo=${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/cache \
+                              --skip-tls-verify \
+                              --skip-unused-stages=true \
+                              --custom-platform=linux/arm64 \
+                              --build-arg BUILDKIT_INLINE_CACHE=1 \
+                              --snapshotMode=redo \
+                              --log-format=text \
+                              --verbosity=info
                             """
                         }
                     }
@@ -159,10 +173,14 @@ pipeline {
                             --template '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}-ARCHVARIANT' \\
                             --target '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'
                         """
+                        sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'"
                     }
                 }
             }
         }
+        
+        
+        
     }
 }
 
