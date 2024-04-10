@@ -24,7 +24,7 @@
 
 #### 第1节 配置 values 清单 自定义Jenkins环境配置
 
-· values.yaml 配置示例
+- values.yaml 配置示例，其中详细变量参数未做函数化，旨在理解相关参数配置，具体配置参数可参考第一章[示例配置](https://github.com/Roliyal/CROlordCloudNative/blob/main/%E7%AC%AC1%E7%AB%A0%20%E5%A7%8B%EF%BC%9A%E5%B7%A5%E5%85%B7%E9%93%BE/%E7%AC%AC1%E8%8A%82%20%E9%85%8D%E7%BD%AE%20jenkins%20%E5%B7%A5%E5%85%B7%E9%9B%86%E5%BA%8F.md)
 
 ```yaml
 # 持久化存储配置
@@ -325,7 +325,7 @@ agent:
           nodeSelector: "beta.kubernetes.io/arch=amd64" #lables取自阿里云kubernetes 容器服务节点标签 
           containers:
             - name: podman
-              image: crolord/podman:latest
+              image: crolord/podman:latest #该镜像目前支持 amd64 架构
               command: "/bin/sh -c"
               args: "cat"
               ttyEnabled: true
@@ -393,6 +393,8 @@ agent:
 ###### 其他配置
 
 - ingress: 配置外部访问Jenkins服务的入口，包括主机名、TLS证书等。
+  - 证书方式可以采用alb ingress 方式选择三种证书方式， Secret证书 、自动发现证书、AlbConfig指定证书，参考链接 [使用ALB Ingress配置HTTPS监听证书
+    ](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/use-an-alb-ingress-to-configure-certificates-for-an-https-listener#context-1h8-lvh-2o5)
 - serviceType, servicePort: 指定Jenkins服务的类型（如ClusterIP）和端口，决定如何在Kubernetes内部访问Jenkins。
 + 通过这些配置，可以详细控制Jenkins在Kubernetes环境中的部署方式，包括安全、存储、插件、构建代理等各个方面。配置时，应根据具体需求调整参数，以达到最佳的运行效果和资源利用率。
 
