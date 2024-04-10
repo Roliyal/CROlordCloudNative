@@ -1,30 +1,28 @@
 # ACK CI配置
 
-### CI的起源
+# CI的起源
 
 持续集成（CI）是一种软件开发实践，旨在频繁地（通常是每天多次）将代码变更集成到共享存储库中。这一概念最早由Grady Booch在1991年提出，并随着敏捷软件开发的兴起而广泛应用。CI的主要目的是通过自动化构建和测试来快速发现集成错误，从而减少集成问题，提高软件质量。
+# CI的前置要求
+要成功实现持续集成（CI），需要满足几个关键的前置条件：
 
-### CI的前置要求
+* **版本控制系统（VCS）**：CI的基石是版本控制。Git是目前最流行的VCS，它允许多名开发者同时工作在同一个项目上，而不会互相干扰。
+* **测试驱动开发（TDD）**：TDD是一种软件开发过程，要求开发者在编写实际代码之前先编写测试用例。
+* **集成环境的要求**：CI流程需要专门的服务器或服务来执行构建和测试任务。工具如Jenkins、Travis CI和CircleCI等提供了灵活的配置选项来满足不同项目的需求。
 
-要成功实现持续集成（CI），需要满足几个关键的前置条件。这些条件不仅涉及技术面的准备，还包括团队文化和工作流程的调整。
+## Helm Jenkins 使用与配置
+### 查看Helm Values字段含义
+- 自定义Jenkins环境配置
 
-版本控制系统（VCS）：CI的基石是版本控制。Git是目前最流行的VCS，它允许多名开发者同时工作在同一个项目上，而不会互相干扰。版本控制不仅帮助团队管理代码变更历史，还是实现自动化构建和测试的前提。Martin Fowler，一位软件开发领域的权威人物，在他的文章中强调了版本控制在CI中的中心作用。
+ - 使用以下命令查看具体的Helm values字段含义，以及参考在线文档：
 
-测试驱动开发（TDD）：TDD是一种软件开发过程，要求开发者在编写实际代码之前先编写测试用例。这种做法确保了新增功能或修复的有效性可以立即通过自动化测试来验证，从而减少了缺陷率。Kent Beck，TDD的先驱之一，在他的书《测试驱动开发》中深入探讨了TDD的价值和实践方法。
+```shell
+helm show values <Helm仓库>/<Helm镜像名>
+```
 
-集成环境的要求：CI流程需要专门的服务器或服务来执行构建和测试任务。这些环境需要能够模拟产品实际运行的环境，以确保测试结果的准确性。Jenkins、Travis CI和CircleCI等工具提供了灵活的配置选项来满足不同项目的需求。在选择集成环境时，考虑到构建速度、易用性和可扩展性是至关重要的。
+ - 在线文档参考：[Jenkins Helm 参数参考集](https://github.com/jenkinsci/helm-charts/blob/main/charts/jenkins/VALUES.md)
 
-成功实施CI的另一个关键因素是团队文化。团队成员需要认识到，频繁且早期的集成可以大大降低集成问题的复杂度和解决成本。这种文化转变需要时间，但通过持续教育和实践，它会逐渐成为开发流程的自然部分
-
-这部分内容详细探讨了实施CI的关键前置条件，不仅涵盖了技术和工具方面的要求，还触及了实施CI所需的团队文化和思维方式的转变。接下来，我将进入使用Jenkins配置CI的详细步骤和建议。
-
-### helm Jenkins 使用与配置
-
-* 使用 "helm show values Helm仓库/Helm镜像名" 查看helm values字段含义，以及参考在线文档 jenkisn values参数 [jenkins helm 参数参考集](https://github.com/jenkinsci/helm-charts/blob/main/charts/jenkins/VALUES.md)
-
-#### 第1节 配置 values 清单 自定义Jenkins环境配置
-
-- values.yaml 配置示例，其中详细变量参数未做函数化，旨在理解相关参数配置，具体配置参数可参考第一章[示例配置](https://github.com/Roliyal/CROlordCloudNative/blob/main/%E7%AC%AC1%E7%AB%A0%20%E5%A7%8B%EF%BC%9A%E5%B7%A5%E5%85%B7%E9%93%BE/%E7%AC%AC1%E8%8A%82%20%E9%85%8D%E7%BD%AE%20jenkins%20%E5%B7%A5%E5%85%B7%E9%9B%86%E5%BA%8F.md)
+###### 在values.yaml中配置Jenkins环境，以下是配置示例：
 
 ```yaml
 # 持久化存储配置
@@ -44,12 +42,12 @@ persistence:
 
 # JCasC 配置项
 controller:
-  usePodSecurityContext: true      
+  usePodSecurityContext: true  
   containerSecurityContext:
     runAsUser: 1000
     runAsGroup: 1000
     readOnlyRootFilesystem: true
-    allowPrivilegeEscalation: true      
+    allowPrivilegeEscalation: true  
   componentName: "jenkins-controller"
   image:
     registry: "docker.io"
@@ -266,7 +264,7 @@ agent:
    connectTimeout: 100
    annotations: {}
    podTemplates:
-      kanikoarm: |         
+      kanikoarm: |     
        - name: kanikoarm
          label: kanikoarm
          serviceAccount: jenkins
@@ -317,7 +315,7 @@ agent:
          volumes:
            - secretVolume:
                secretName: kaniko-secret
-               mountPath: "/kaniko/.docker"             
+               mountPath: "/kaniko/.docker"         
       podman: |
         - name: podman
           label: podman
@@ -393,13 +391,15 @@ agent:
 ###### 其他配置
 
 - ingress: 配置外部访问Jenkins服务的入口，包括主机名、TLS证书等。
-  - 证书方式可以采用alb ingress 方式选择三种证书方式， Secret证书 、自动发现证书、AlbConfig指定证书，参考链接 [使用ALB Ingress配置HTTPS监听证书
-    ](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/use-an-alb-ingress-to-configure-certificates-for-an-https-listener#context-1h8-lvh-2o5)
+  - 证书方式可以采用ALB ingress 方式选择三种证书方式， Secret证书 、自动发现证书、AlbConfig指定证书，参考链接 [使用ALB Ingress配置HTTPS监听证书](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/use-an-alb-ingress-to-configure-certificates-for-an-https-listener#context-1h8-lvh-2o5)
 - serviceType, servicePort: 指定Jenkins服务的类型（如ClusterIP）和端口，决定如何在Kubernetes内部访问Jenkins。
+
 + 通过这些配置，可以详细控制Jenkins在Kubernetes环境中的部署方式，包括安全、存储、插件、构建代理等各个方面。配置时，应根据具体需求调整参数，以达到最佳的运行效果和资源利用率。
 
-###### 自定义镜像补充说明 
+###### 自定义工具镜像补充
+
 + docker.io/crolord/kanikomanifest-tool:v1.1.0 镜像 dockerfile 示例
+
 ```dockerfile
 # 使用 Kaniko 的最新版镜像作为构建阶段名为 plugin
 FROM gcr.io/kaniko-project/executor:latest AS plugin
@@ -428,7 +428,8 @@ COPY --from=trivy /opt/bitnami/trivy/bin/trivy /usr/local/bin/trivy
 
 ```
 
-####
+#### 
+
 ```pipline
 pipeline {
     // 定义使用的 Jenkins agent 类型
@@ -476,7 +477,7 @@ pipeline {
                 }
             }
         }
-      
+  
         // 检出代码
         stage('Checkout') {
             steps {
@@ -494,7 +495,7 @@ pipeline {
                 echo '代码检出完成'
             }
         }
-      
+  
         // 检查目录和Dockerfile
         stage('Check Directory') {
             steps {
@@ -503,7 +504,7 @@ pipeline {
                 stash includes: '**', name: 'source-code' // 存储工作空间，包括Dockerfile和应用代码
             }
         }
-      
+  
         // 并行构建阶段
         stage('Parallel Build') {
             parallel {
@@ -557,7 +558,7 @@ pipeline {
                 }
             }
         }
-      
+  
         // 推送多架构镜像 Manifest-tools
         stage('Push Multi-Arch Manifest') {
             agent { kubernetes { inheritFrom 'kanikoamd' } }
@@ -577,9 +578,9 @@ pipeline {
                 }
             }
         }
-      
-      
-      
+  
+  
+  
     }
 }
 
