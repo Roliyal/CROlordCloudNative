@@ -299,12 +299,10 @@ secret/secret-credentials created
 2.5 配置 Helm Jenkins values 配置清单
 
 ```yaml
-# jenkins-values.yaml
-
 # 持久化存储配置
 persistence:
    enabled: true
-   storageClass: "alicloud-disk-topology-alltype" #依次尝试创建指定的存储类型，并且使用WaitForFirstConsumer模式，可以兼容多可用区集群。
+   storageClass: "alicloud-disk-topology-alltype" #依次尝试创建指定的存储类型，并且使用WaitForFirstConsumer模式，可以兼容多可用区集群。 [参考StorageClass](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/disk-volume-overview-3#p-y0r-qmp-hxh)
    accessMode: ReadWriteOnce
    size: "100Gi"
    #subPath: "jenkins_home"
@@ -324,9 +322,6 @@ controller:
       runAsGroup: 1000
       readOnlyRootFilesystem: true
       allowPrivilegeEscalation: true
-      #nodeSelector:
-      #kubernetes.io/hostname: "cn-hongkong.172.16.0.84"
-   # Used for label app.kubernetes.io/component
    componentName: "jenkins-controller"
    image:
       registry: "docker.io"
@@ -481,7 +476,7 @@ controller:
       annotations:
          nginx.ingress.kubernetes.io/rewrite-target: /
          nginx.ingress.kubernetes.io/ssl-redirect: "true"
-      ingressClassName: mse
+      ingressClassName: mse # 因使用 mse 云原生网关，ingressclass名需根据实际填写
       tls:
          - secretName: "jenkins-tls"
            hosts:
@@ -492,15 +487,9 @@ rbac:
    create: true
    readSecrets: true
 
-
 # Prometheus监控配置
 prometheus:
    enabled: true
-
-# 备份配置
-#backup:
-# enabled: true
-# schedule: "0 2 * * *"
 
 # Jenkins代理配置
 agent:
@@ -512,8 +501,6 @@ agent:
    kubernetesReadTimeout: 15
    maxRequestsPerHostStr: "32"
    namespace: cicd
-   #image: "jenkins/inbound-agent"
-   #tag: "latest"
    image:
       repository: "jenkins/inbound-agent"
       tag: "latest"
@@ -528,11 +515,11 @@ agent:
    runAsGroup: 0
    resources:
       requests:
-         cpu: "1024m" #临时测试调整
-         memory: "1024Mi" #临时测试调整
+         cpu: "1024m"
+         memory: "1024Mi"
       limits:
-         cpu: "4096" #临时测试调整
-         memory: "4096Mi" #临时测试调整
+         cpu: "4096"
+         memory: "4096Mi"
    alwaysPullImage: true
    podRetention: "Never"
    showRawYaml: false
@@ -558,7 +545,7 @@ agent:
            nodeSelector: "beta.kubernetes.io/arch=arm64"
            containers:
              - name: kanikoarm
-               image: gcr.io/kaniko-project/executor:v1.22.0-debug
+               image: gcr.io/kaniko-project/executor:v1.22.0-debug 
                command: "sh -c"
                args: "cat"
                ttyEnabled: true
@@ -581,10 +568,10 @@ agent:
          - name: kanikoamd
            label: kanikoamd
            serviceAccount: jenkins
-           nodeSelector: "beta.kubernetes.io/arch=amd64"
+           nodeSelector: "beta.kubernetes.io/arch=amd64" #lables取自阿里云kubernetes 容器服务节点标签 
            containers:
              - name: kanikoamd
-               image: crolord/kanikomanifest-tool:v1.0.9
+               image: docker.io/crolord/kanikomanifest-tool:v1.1.0 #镜像版本为AMD架构，其中封装 kaniko、 trivy 、Manifest-tools 工具
                command: "sh -c"
                args: "cat"
                ttyEnabled: true
@@ -602,15 +589,15 @@ agent:
            volumes:
              - secretVolume:
                  secretName: kaniko-secret
-                 mountPath: "/kaniko/.docker"               
+                 mountPath: "/kaniko/.docker"         
       podman: |
          - name: podman
            label: podman
            serviceAccount: default
-           nodeSelector: "beta.kubernetes.io/arch=amd64"
+           nodeSelector: "beta.kubernetes.io/arch=amd64" #lables取自阿里云kubernetes 容器服务节点标签 
            containers:
              - name: podman
-               image: crolord/podman:latest
+               image: crolord/podman:latest #该镜像目前支持 amd64 架构
                command: "/bin/sh -c"
                args: "cat"
                ttyEnabled: true
