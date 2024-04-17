@@ -898,7 +898,7 @@ pipeline {
                         // 创建并推送多架构镜像的manifest
                         sh """
                             manifest-tool --insecure push from-args \\
-                            --platforms '${env.PLATFORMS} \\
+                            --platforms '${env.PLATFORMS}' \\
                             --template '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}-ARCHVARIANT' \\
                             --target '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'
                         """
