@@ -42,17 +42,17 @@ persistence:
 
 # JCasC 配置项
 controller:
-  usePodSecurityContext: true  
+  usePodSecurityContext: true
   containerSecurityContext:
     runAsUser: 1000
     runAsGroup: 1000
     readOnlyRootFilesystem: true
-    allowPrivilegeEscalation: true  
+    allowPrivilegeEscalation: true
   componentName: "jenkins-controller"
   image:
     registry: "docker.io"
     repository: "jenkins/jenkins"
-    tag: "2.451"
+    tag: "2.453"
     #tag: "2.444"
     #tagLabel: jdk17
     pullPolicy: "Always"
@@ -68,6 +68,7 @@ controller:
   javaOpts: "-Duser.timezone=Asia/Shanghai -Dorg.jenkinsci.plugins.durabletask.BourneShellScript.USE_BINARY_WRAPPER=true"
   #配置插件
   installPlugins:
+    - persistent-parameter:1.3
     - workflow-multibranch:783.va_6eb_ef636fb_d
     - kubernetes:4203.v1dd44f5b_1cf9
     - workflow-aggregator:latest
@@ -77,15 +78,19 @@ controller:
     - docker-build-publish:1.4.0
     - sshd:3.322.v159e91f6a_550
     - ws-cleanup:0.45
-    - gson-api:2.10.1-15.v0d99f670e0a_7  
+    - gson-api:2.10.1-15.v0d99f670e0a_7
     - github:1.38.0
     - build-name-setter:2.4.1
-    - versionnumber:1.11 
+    - versionnumber:1.11
     - dingding-notifications:2.7.3
     - docker-workflow:572.v950f58993843
-    - kubernetes-credentials-provider:1.262.v2670ef7ea_0c5 
-    - github-branch-source:1785.v99802b_69816c
-    - build-name-setter:2.4.2  
+    - kubernetes-credentials-provider:1.262.v2670ef7ea_0c5
+    - github-branch-source:1787.v8b_8cd49a_f8f1
+    - build-name-setter:2.4.2
+    - build-environment:1.7
+    - sonar:2.17.2
+    - pipeline-utility-steps:2.16.2
+    - http_request:1.18
   existingSecret: "secret-credentials"
   additionalExistingSecrets:
     - name: secret-credentials
@@ -219,141 +224,141 @@ prometheus:
 
 # Jenkins代理配置
 agent:
-   enabled: true
-   defaultsProviderTemplate: ""
-   jenkinsUrl:
-   jenkinsTunnel:
-   kubernetesConnectTimeout: 5
-   kubernetesReadTimeout: 15
-   maxRequestsPerHostStr: "32"
-   namespace: cicd
-   image:
-     repository: "jenkins/inbound-agent"
-     tag: "latest"
-   workingDir: "/home/jenkins/agent"
-   nodeUsageMode: "NORMAL"
-   customJenkinsLabels: []
-   imagePullSecretName:
-   componentName: "jenkins-agent"
-   websocket: false
-   privileged: true
-   runAsUser: 0
-   runAsGroup: 0
-   resources:
-      requests:
-         cpu: "1024m" 
-         memory: "1024Mi"
-      limits:
-         cpu: "4096" 
-         memory: "4096Mi" 
-   alwaysPullImage: true
-   podRetention: "Never"
-   showRawYaml: false
-   workspaceVolume: {}
-   envVars: []
-   #nodeSelector: {}
-   command:
-   args: "${computer.jnlpmac} ${computer.name}"
-   sideContainerName: "jnlp"
-   TTYEnabled: true
-   containerCap: 10
-   podName: "jenkins-slave"
-   idleMinutes: 0
-   yamlTemplate: ""
-   yamlMergeStrategy: "override"
-   connectTimeout: 100
-   annotations: {}
-   podTemplates:
-      kanikoarm: |     
-       - name: kanikoarm
-         label: kanikoarm
-         serviceAccount: jenkins
-         nodeSelector: "beta.kubernetes.io/arch=arm64"
-         containers:
-           - name: kanikoarm
-             image: gcr.io/kaniko-project/executor:v1.22.0-debug 
-             command: "sh -c"
-             args: "cat"
-             ttyEnabled: true
-             privileged: false
-             #resourceRequestCpu: "1000m"
-             #resourceRequestMemory: "512Mi"
-             #resourceLimitCpu: "2"
-             #resourceLimitMemory: "2048Mi"
-           - name: jnlp
-             image: jenkins/inbound-agent:latest
-             command: "jenkins-agent"
-             args: ""
-             ttyEnabled: true
-             privileged: false
-         volumes:
-           - secretVolume:
-               secretName: kaniko-secret
-               mountPath: "/kaniko/.docker"
-      kanikoamd: |
-       - name: kanikoamd
-         label: kanikoamd
-         serviceAccount: jenkins
-         nodeSelector: "beta.kubernetes.io/arch=amd64" #lables取自阿里云kubernetes 容器服务节点标签 
-         containers:
-           - name: kanikoamd
-             image: docker.io/crolord/kanikomanifest-tool:v1.1.0 #镜像版本为AMD架构，其中封装 kaniko、 trivy 、Manifest-tools 工具
-             command: "sh -c"
-             args: "cat"
-             ttyEnabled: true
-             privileged: false
-             #resourceRequestCpu: "1000m"
-             #resourceRequestMemory: "512Mi" 
-             #resourceLimitCpu: "2"
-             #resourceLimitMemory: "2048Mi"
-           - name: jnlp
-             image: jenkins/inbound-agent:latest
-             command: "jenkins-agent"
-             args: ""
-             ttyEnabled: true
-             privileged: false
-         volumes:
-           - secretVolume:
-               secretName: kaniko-secret
-               mountPath: "/kaniko/.docker"         
-      podman: |
-        - name: podman
-          label: podman
-          serviceAccount: default
-          nodeSelector: "beta.kubernetes.io/arch=amd64" #lables取自阿里云kubernetes 容器服务节点标签 
-          containers:
-            - name: podman
-              image: crolord/podman:latest #该镜像目前支持 amd64 架构
-              command: "/bin/sh -c"
-              args: "cat"
-              ttyEnabled: true
-              privileged: true
-          volumes:
-            - hostPathVolume:
-                hostPath: "/sys"
-                mountPath: "/sys"
-      docker: | 
-        - name: docker
-          label: docker
-          serviceAccount: default
-          containers:
-            - name: docker
-              image: docker:dind
-              command: "/bin/sh -c"
-              args: "cat"
-              ttyEnabled: true
-              privileged: true
-          volumes:
-            - hostPathVolume:
-                hostPath: "/var/run/docker.sock"
-                mountPath: "/var/run/docker.sock"
-   volumes:
-     - type: HostPath
-       hostPath: /var/lib/containers
-       mountPath: /var/lib/containers
-     - type: HostPath
-       hostPath: /sys
-       mountPath: /sys
+  enabled: true
+  defaultsProviderTemplate: ""
+  jenkinsUrl:
+  jenkinsTunnel:
+  kubernetesConnectTimeout: 5
+  kubernetesReadTimeout: 15
+  maxRequestsPerHostStr: "32"
+  namespace: cicd
+  image:
+    repository: "jenkins/inbound-agent"
+    tag: "latest"
+  workingDir: "/home/jenkins/agent"
+  nodeUsageMode: "NORMAL"
+  customJenkinsLabels: []
+  imagePullSecretName:
+  componentName: "jenkins-agent"
+  websocket: false
+  privileged: true
+  runAsUser: 0
+  runAsGroup: 0
+  resources:
+    requests:
+      cpu: "1024m"
+      memory: "1024Mi"
+    limits:
+      cpu: "4096"
+      memory: "4096Mi"
+  alwaysPullImage: true
+  podRetention: "Never"
+  showRawYaml: false
+  workspaceVolume: {}
+  envVars: []
+  #nodeSelector: {}
+  command:
+  args: "${computer.jnlpmac} ${computer.name}"
+  sideContainerName: "jnlp"
+  TTYEnabled: true
+  containerCap: 10
+  podName: "jenkins-slave"
+  idleMinutes: 0
+  yamlTemplate: ""
+  yamlMergeStrategy: "override"
+  connectTimeout: 100
+  annotations: {}
+  podTemplates:
+    kanikoarm: |
+      - name: kanikoarm
+        label: kanikoarm
+        serviceAccount: jenkins
+        nodeSelector: "beta.kubernetes.io/arch=arm64"
+        containers:
+          - name: kanikoarm
+            image: gcr.io/kaniko-project/executor:v1.22.0-debug 
+            command: "sh -c"
+            args: "cat"
+            ttyEnabled: true
+            privileged: false
+            #resourceRequestCpu: "1000m"
+            #resourceRequestMemory: "512Mi"
+            #resourceLimitCpu: "2"
+            #resourceLimitMemory: "2048Mi"
+          - name: jnlp
+            image: jenkins/inbound-agent:latest
+            command: "jenkins-agent"
+            args: ""
+            ttyEnabled: true
+            privileged: false
+        volumes:
+          - secretVolume:
+              secretName: kaniko-secret
+              mountPath: "/kaniko/.docker"
+    kanikoamd: |
+      - name: kanikoamd
+        label: kanikoamd
+        serviceAccount: jenkins
+        nodeSelector: "beta.kubernetes.io/arch=amd64" #lables取自阿里云kubernetes 容器服务节点标签 
+        containers:
+          - name: kanikoamd
+            image: docker.io/crolord/kanikomanifest-tool:v1.1.5 #镜像版本为AMD架构，其中封装 kaniko、 trivy 、Manifest-tools、 sonarqunbe 工具
+            command: "sh -c"
+            args: "cat"
+            ttyEnabled: true
+            privileged: false
+            #resourceRequestCpu: "1000m"
+            #resourceRequestMemory: "512Mi" 
+            #resourceLimitCpu: "2"
+            #resourceLimitMemory: "2048Mi"
+          - name: jnlp
+            image: jenkins/inbound-agent:latest
+            command: "jenkins-agent"
+            args: ""
+            ttyEnabled: true
+            privileged: false
+        volumes:
+          - secretVolume:
+              secretName: kaniko-secret
+              mountPath: "/kaniko/.docker"         
+    podman: |
+      - name: podman
+        label: podman
+        serviceAccount: default
+        nodeSelector: "beta.kubernetes.io/arch=amd64" #lables取自阿里云kubernetes 容器服务节点标签 
+        containers:
+          - name: podman
+            image: crolord/podman:latest #该镜像目前支持 amd64 架构
+            command: "/bin/sh -c"
+            args: "cat"
+            ttyEnabled: true
+            privileged: true
+        volumes:
+          - hostPathVolume:
+              hostPath: "/sys"
+              mountPath: "/sys"
+    docker: |
+      - name: docker
+        label: docker
+        serviceAccount: default
+        containers:
+          - name: docker
+            image: docker:dind
+            command: "/bin/sh -c"
+            args: "cat"
+            ttyEnabled: true
+            privileged: true
+        volumes:
+          - hostPathVolume:
+              hostPath: "/var/run/docker.sock"
+              mountPath: "/var/run/docker.sock"
+  volumes:
+    - type: HostPath
+      hostPath: /var/lib/containers
+      mountPath: /var/lib/containers
+    - type: HostPath
+      hostPath: /sys
+      mountPath: /sys
 ```
 
 ###### 持久化存储配置 (persistence)
@@ -398,7 +403,7 @@ agent:
 
 ###### 自定义工具镜像补充
 
-+ docker.io/crolord/kanikomanifest-tool:v1.1.0 镜像 dockerfile 示例
++ docker.io/crolord/kanikomanifest-tool:v1.1.5 镜像 dockerfile 示例
 
 ```dockerfile
 # 使用 Kaniko 的最新版镜像作为构建阶段名为 plugin
@@ -410,11 +415,22 @@ FROM docker.io/mplatform/manifest-tool:latest AS manifest-tool
 # 添加一个构建阶段用来从 bitnami/trivy 镜像中复制 trivy
 FROM docker.io/bitnami/trivy:latest AS trivy
 
+# 使用 SonarScanner 的 Docker 镜像
+FROM sonarsource/sonar-scanner-cli:latest AS sonar-scanner
+
 # 基础镜像 ubuntu 并指定标签，确保构建的一致性
 FROM ubuntu:20.04
+RUN apt-get update && apt-get install -y software-properties-common && \
+    add-apt-repository ppa:openjdk-r/ppa && \
+    apt-get update && apt-get install -y openjdk-17-jre-headless && \
+    rm -rf /var/lib/apt/lists/*
 
+# Set JAVA_HOME environment variable
+ENV JAVA_HOME /usr/lib/jvm/java-17-openjdk-amd64
+ENV PATH $PATH:$JAVA_HOME/bin
 
 # 设置 Docker 配置环境变量
+
 ENV DOCKER_CONFIG /kaniko/.docker
 
 # 从 plugin 阶段复制 Kaniko 执行程序
@@ -426,21 +442,285 @@ COPY --from=manifest-tool /manifest-tool /usr/local/bin/manifest-tool
 # 从 trivy 阶段复制 trivy 二进制到当前镜像
 COPY --from=trivy /opt/bitnami/trivy/bin/trivy /usr/local/bin/trivy
 
+# 从 sonar-scanner 阶段复制 sonar-scanner 二进制到当前镜像
+COPY --from=sonar-scanner /opt/sonar-scanner /opt/sonar-scanner
+ENV PATH="/opt/sonar-scanner/bin:${PATH}"
+
+
+```
+## Helm SonarQube 使用与配置
+1. 添加Helm仓库
+  - 首先，需要将存放SonarQube Helm图表的仓库添加到Helm中。可以使用下面的命令添加官方的SonarQube Helm仓库：
+
+```bash
+helm repo add sonarqube https://SonarSource.github.io/helm-chart-sonarqube
+helm repo update
 ```
 
-#### 
+2. 安装SonarQube
+ - 接下来，使用Helm安装SonarQube。你可以直接安装，也可以先下载values.yaml文件进行修改，然后再安装。先简单安装看看：
+
+```shell
+helm install sonarqube sonarqube/sonarqube --version <chart_version> --namespace <your_namespace> --create-namespace
+
+```
++ 将<chart_version>替换为你想安装的版本号，将<your_namespace>替换为你想在其上安装SonarQube的Kubernetes命名空间。
+
+3. 修改Values
+   Helm图表的安装和配置可以通过修改values.yaml文件来定制。你可以从图表仓库中下载默认的values.yaml文件，进行修改：
+
+```shell
+helm show values sonarqube/sonarqube > values.yaml
+```
+这会将当前图表的默认配置输出到values.yaml文件中。然后，你可以使用任何文本编辑器打开这个文件，并根据需要修改配置。比如，你可能想要修改以下一些配置：
+```yaml
+# Default values for sonarqube.
+deploymentType: "StatefulSet"
+replicaCount: 1
+revisionHistoryLimit: 10
+deploymentStrategy: {}
+OpenShift:
+  enabled: false
+  createSCC: true
+edition: "community"
+image:
+  repository: sonarqube
+  tag: 10.4.1-{{ .Values.edition }}
+  pullPolicy: IfNotPresent
+securityContext:
+  fsGroup: 0
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 0
+  seccompProfile:
+    type: RuntimeDefault
+  capabilities:
+    drop: ["ALL"]
+elasticsearch:
+  configureNode: false
+  bootstrapChecks: true
+service:
+  type: ClusterIP
+  externalPort: 9000
+  internalPort: 9000
+  labels:
+  annotations: {}
+networkPolicy:
+  enabled: false
+  prometheusNamespace: "monitoring"
+sonarWebContext: ""
+nginx:
+  enabled: false
+ingress:
+  enabled: false
+  hosts:
+    - name: sonarqube.your-org.com
+  annotations: {}
+  tls: []
+route:
+  enabled: false
+  host: ""
+  tls:
+    termination: edge
+  annotations: {}
+affinity: {}
+tolerations: []
+nodeSelector: {}
+hostAliases: []
+readinessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 6
+  timeoutSeconds: 1
+livenessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 6
+  timeoutSeconds: 1
+startupProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  failureThreshold: 24
+  timeoutSeconds: 1
+initContainers:
+  securityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 0
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop: ["ALL"]
+  resources: {}
+extraInitContainers: {}
+extraContainers: []
+caCerts:
+  enabled: false
+  image: adoptopenjdk/openjdk11:alpine
+  secret: your-secret
+initSysctl:
+  enabled: true
+  vmMaxMapCount: 524288
+  fsFileMax: 131072
+  nofile: 131072
+  nproc: 8192
+  securityContext:
+    privileged: true
+    runAsUser: 0
+initFs:
+  enabled: true
+  securityContext:
+    privileged: false
+    runAsNonRoot: false
+    runAsUser: 0
+    runAsGroup: 0
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop: ["ALL"]
+      add: ["CHOWN"]
+prometheusExporter:
+  enabled: false
+  version: "0.17.2"
+  noCheckCertificate: false
+  webBeanPort: 8000
+  ceBeanPort: 8001
+  config:
+    rules:
+      - pattern: ".*"
+prometheusMonitoring:
+  podMonitor:
+    enabled: false
+    namespace: "default"
+    interval: 30s
+plugins:
+  install: []
+  noCheckCertificate: false
+jvmOpts: ""
+jvmCeOpts: ""
+monitoringPasscode: "define_it"
+annotations: {}
+resources:
+  limits:
+    cpu: 800m
+    memory: 4Gi
+  requests:
+    cpu: 400m
+    memory: 2Gi
+persistence:
+  enabled: true
+  annotations: {}
+  storageClass: "alicloud-disk-topology-alltype" #依次尝试创建指定的存储类型，并且使用WaitForFirstConsumer模式，可以兼容多可用区集群。 [参考StorageClass](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/disk-volume-overview-3#p-y0r-qmp-hxh)
+  accessMode: ReadWriteOnce
+  size: "100Gi"
+  uid: 1000
+  guid: 0
+  volumes: []
+  mounts: []
+emptyDir: {}
+jdbcOverwrite:
+  enable: false
+  jdbcUrl: "jdbc:postgresql://myPostgress/myDatabase?socketTimeout=1500"
+  jdbcUsername: "sonarUser"
+  jdbcPassword: "sonarPass"
+postgresql:
+  enabled: true
+  postgresqlUsername: "sonarUser"
+  postgresqlPassword: "sonarPass"
+  postgresqlDatabase: "sonarDB"
+  service:
+    port: 5432
+  resources:
+    limits:
+      cpu: 2
+      memory: 2Gi
+    requests:
+      cpu: 100m
+      memory: 200Mi
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    size: 20Gi
+    storageClass: "alicloud-disk-topology-alltype" #依次尝试创建指定的存储类型，并且使用WaitForFirstConsumer模式，可以兼容多可用区集群。 [参考StorageClass](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/disk-volume-overview-3#p-y0r-qmp-hxh)
+  securityContext:
+    enabled: true
+    fsGroup: 1001
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop: ["ALL"]
+  volumePermissions:
+    enabled: false
+    securityContext:
+      runAsUser: 0
+  shmVolume:
+    chmod:
+      enabled: false
+  serviceAccount:
+    enabled: false
+podLabels: {}
+sonarqubeFolder: /opt/sonarqube
+tests:
+  image: ""
+  enabled: true
+  resources: {}
+serviceAccount:
+  create: false
+  annotations: {}
+extraConfig:
+  secrets: []
+  configmaps: []
+terminationGracePeriodSeconds: 60
+```
+- 持久化存储选项
+- SonarQube版本
+- 插件安装
+- 资源限制（CPU、内存）
+- 服务类型（比如，使用LoadBalancer公开SonarQube）
+4. 使用自定义Values文件安装SonarQube
+ - 修改values.yaml文件后，使用以下命令，通过自定义的values.yaml文件安装SonarQube：
+```shell
+helm install sonarqube sonarqube/sonarqube -f values.yaml --namespace cicd
+```
+ - 确保将<your_namespace>替换为实际的命名空间。
+
+5. 访问SonarQube
+   - 安装完成后，你可能需要执行一些额外的步骤来访问SonarQube界面。如果你将服务类型设置为LoadBalancer，可以通过以下命令获取外部IP：
+
+```shell
+kubectl get svc --namespace cicd
+
+```
+然后，使用返回的外部IP地址在浏览器中访问SonarQube。
+
+清理
+如果需要，你可以通过以下命令删除SonarQube实例：
+
+```shell
+helm delete sonarqube --namespace cicd
+```
+
+
 
 ```pipline
 pipeline {
     // 定义使用的 Jenkins agent 类型
     agent { kubernetes { /* 配置省略 */ } }
-  
+    
     // 定义环境变量
     environment {
         GIT_BRANCH = 'main' // Git主分支的默认值
         MAJOR_VERSION = 'v1' // 主版本号
         MINOR_VERSION = '0'  // 次版本号
-        PLATFORMS = 'linux/amd64' // 构建目标平台
+        PLATFORMS = 'linux/amd64,linux/arm64' // 构建目标平台
         MAJOR = "${params.MAJOR_VERSION ?: env.MAJOR_VERSION ?: '1'}" // 主版本号，允许通过参数覆盖
         MINOR = "${params.MINOR_VERSION ?: env.MINOR_VERSION ?: '0'}" // 次版本号，允许通过参数覆盖
         PATCH = "${env.BUILD_NUMBER}" // 构建号，用作修订版本号
@@ -448,6 +728,7 @@ pipeline {
         IMAGE_REGISTRY = "${params.IMAGE_REGISTRY}" // 镜像仓库地址
         IMAGE_NAMESPACE = "${params.IMAGE_NAMESPACE}" // 镜像命名空间
         IMAGE_ID = "${params.IMAGE_NAMESPACE}" // 镜像ID
+        SONARQUBE_DOMAIN = "${params.SONARQUBE_DOMAINE}" // Sonarqube 域名配置
     }
 
     // 触发条件
@@ -455,16 +736,18 @@ pipeline {
 
     // 参数定义
     parameters {
-        string(name: 'BRANCH', defaultValue: 'main', description: 'Git branch to build')
-        choice(name: 'PLATFORMS', choices: ['linux/amd64', 'linux/amd64,linux/arm64,'], description: 'Target platforms for ACR registry')
-        string(name: 'GIT_REPOSITORY', defaultValue: 'https://github.com/Roliyal/CROlordCodelibrary.git', description: 'Git repository URL')
-        string(name: 'MAJOR_VERSION', defaultValue: '1', description: 'Major version number')
-        string(name: 'MINOR_VERSION', defaultValue: '0', description: 'Minor version number')
-        string(name: 'BUILD_DIRECTORY', defaultValue: 'Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/go-guess-number', description: 'Build directory path')
-        string(name: 'IMAGE_REGISTRY', defaultValue: 'crolord-registry-registry-vpc.cn-hongkong.cr.aliyuncs.com', description: 'The Alibaba ACR registry to use')
-        string(name: 'IMAGE_NAMESPACE', defaultValue: 'febe', description: 'The Alibaba ACR image namespace')
+        persistentString(name: 'BRANCH', defaultValue: 'main', description: 'Initial default branch: main')
+        persistentChoice(name: 'PLATFORMS', choices: ['linux/amd64', 'linux/amd64,linux/arm64'], description: 'Target platforms, initial value: linux/amd64,linux/arm64')
+        persistentString(name: 'GIT_REPOSITORY', defaultValue: 'https://github.com/Roliyal/CROlordCodelibrary.git', description: 'Git repository URL, default: https://github.com/Roliyal/CROlordCodelibrary.git')
+        persistentString(name: 'MAJOR_VERSION', defaultValue: '1', description: 'Major version number, default: 1')
+        persistentString(name: 'MINOR_VERSION', defaultValue: '0', description: 'Minor version number, default: 0')
+        persistentString(name: 'BUILD_DIRECTORY', defaultValue: 'Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/go-guess-number', description: 'Build directory path, default path: Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/go-guess-number')
+        persistentString(name: 'IMAGE_REGISTRY', defaultValue: 'crolord-registry-registry-vpc.cn-hongkong.cr.aliyuncs.com', description: 'Image registry address, default: crolord-registry-registry-vpc.cn-hongkong.cr.aliyuncs.com')
+        persistentString(name: 'IMAGE_NAMESPACE', defaultValue: 'febe', description: 'Image namespace, default: febe')
+        persistentString(name: 'SONARQUBE_DOMAINE', defaultValue: 'sonarqube.roliyal.com', description: 'SonarQube domain, default: sonarqube.roliyal.com')
+
     }
-  
+    
     // 构建流程定义
     stages {
         // 设置版本信息
@@ -477,7 +760,7 @@ pipeline {
                 }
             }
         }
-  
+        
         // 检出代码
         stage('Checkout') {
             steps {
@@ -495,7 +778,7 @@ pipeline {
                 echo '代码检出完成'
             }
         }
-  
+        
         // 检查目录和Dockerfile
         stage('Check Directory') {
             steps {
@@ -504,7 +787,53 @@ pipeline {
                 stash includes: '**', name: 'source-code' // 存储工作空间，包括Dockerfile和应用代码
             }
         }
-  
+        stage('SonarQube analysis') {
+       agent { kubernetes { inheritFrom 'kanikoamd' } }
+            steps {
+                // 从之前的阶段恢复存储的源代码
+                unstash 'source-code'
+
+                // 指定在特定容器中执行
+                container('kanikoamd') {
+                    // 设置SonarQube环境
+                    withSonarQubeEnv('sonar') {
+                        // 执行sonar-scanner命令，并直接指定项目配置
+                        sh """
+                        sonar-scanner \
+                          -Dsonar.projectKey=${JOB_NAME} \
+                          -Dsonar.projectName='${env.IMAGE_NAMESPACE}' \
+                          -Dsonar.projectVersion=${env.VERSION_TAG} \
+                          -Dsonar.sources=. \
+                          -Dsonar.exclusions='**/*_test.go,**/vendor/**' \
+                          -Dsonar.language=go \
+                          -Dsonar.host.url=http://${env.SONARQUBE_DOMAIN} \
+                          -Dsonar.login=sqa_456a54ee19771dff009c063ca79d1298b43e8fa8 \
+                          -Dsonar.projectBaseDir=${env.BUILD_DIRECTORY}
+                        """
+                // 使用script块处理HTTP请求和JSON解析
+
+                    script {
+                    withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
+                        def authHeader = "Basic " + ("${SONAR_TOKEN}:".bytes.encodeBase64().toString())
+                        def response = httpRequest(
+                            url: "http://${env.SONARQUBE_DOMAIN}/api/qualitygates/project_status?projectKey=${JOB_NAME}",
+                            customHeaders: [[name: 'Authorization', value: authHeader]],
+                            consoleLogResponseBody: true,
+                            acceptType: 'APPLICATION_JSON',
+                            contentType: 'APPLICATION_JSON'
+                        )
+                        def json = readJSON text: response.content
+                        if (json.projectStatus.status != 'OK') {
+                            error "SonarQube quality gate failed: ${json.projectStatus.status}"
+                        } else {
+                            echo "Quality gate passed successfully."
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
         // 并行构建阶段
         stage('Parallel Build') {
             parallel {
@@ -558,7 +887,7 @@ pipeline {
                 }
             }
         }
-  
+        
         // 推送多架构镜像 Manifest-tools
         stage('Push Multi-Arch Manifest') {
             agent { kubernetes { inheritFrom 'kanikoamd' } }
@@ -569,7 +898,7 @@ pipeline {
                         // 创建并推送多架构镜像的manifest
                         sh """
                             manifest-tool --insecure push from-args \\
-                            --platforms linux/amd64,linux/arm64 \\
+                            --platforms '${env.PLATFORMS} \\
                             --template '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}-ARCHVARIANT' \\
                             --target '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'
                         """
@@ -578,9 +907,9 @@ pipeline {
                 }
             }
         }
-  
-  
-  
+        
+        
+        
     }
 }
 
