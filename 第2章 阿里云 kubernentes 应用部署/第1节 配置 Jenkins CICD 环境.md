@@ -748,19 +748,19 @@ pipeline {
 
     }
     
-    // 构建流程定义
-    stages {
-        // 设置版本信息
-        stage('Version') {
-            steps {
-                script {
-                    env.PATCH_VERSION = env.BUILD_NUMBER
-                    env.VERSION_NUMBER = "${env.MAJOR}.${env.MINOR}.${env.PATCH_VERSION}"
-                    echo "Current Version: ${env.VERSION_NUMBER}"
+        // 构建流程定义
+        stages {
+            // 设置版本信息
+            stage('Version') {
+                steps {
+                    script {
+                        env.PATCH_VERSION = env.BUILD_NUMBER
+                        env.VERSION_NUMBER = "${env.MAJOR}.${env.MINOR}.${env.PATCH_VERSION}"
+                        echo "Current Version: ${env.VERSION_NUMBER}"
+                    }
                 }
             }
-        }
-        
+            
         // 检出代码
         stage('Checkout') {
             steps {
@@ -788,52 +788,57 @@ pipeline {
             }
         }
         stage('SonarQube analysis') {
-       agent { kubernetes { inheritFrom 'kanikoamd' } }
+            agent { kubernetes { inheritFrom 'kanikoamd' } }
             steps {
                 // 从之前的阶段恢复存储的源代码
                 unstash 'source-code'
-
+        
                 // 指定在特定容器中执行
                 container('kanikoamd') {
                     // 设置SonarQube环境
                     withSonarQubeEnv('sonar') {
-                        // 执行sonar-scanner命令，并直接指定项目配置
-                        sh """
-                        sonar-scanner \
-                          -Dsonar.projectKey=${JOB_NAME} \
-                          -Dsonar.projectName='${env.IMAGE_NAMESPACE}' \
-                          -Dsonar.projectVersion=${env.VERSION_TAG} \
-                          -Dsonar.sources=. \
-                          -Dsonar.exclusions='**/*_test.go,**/vendor/**' \
-                          -Dsonar.language=go \
-                          -Dsonar.host.url=http://${env.SONARQUBE_DOMAIN} \
-                          -Dsonar.login=sqa_456a54ee19771dff009c063ca79d1298b43e8fa8 \
-                          -Dsonar.projectBaseDir=${env.BUILD_DIRECTORY}
-                        """
-                // 使用script块处理HTTP请求和JSON解析
-
-                    script {
-                    withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
-                        def authHeader = "Basic " + ("${SONAR_TOKEN}:".bytes.encodeBase64().toString())
-                        def response = httpRequest(
-                            url: "http://${env.SONARQUBE_DOMAIN}/api/qualitygates/project_status?projectKey=${JOB_NAME}",
-                            customHeaders: [[name: 'Authorization', value: authHeader]],
-                            consoleLogResponseBody: true,
-                            acceptType: 'APPLICATION_JSON',
-                            contentType: 'APPLICATION_JSON'
-                        )
-                        def json = readJSON text: response.content
-                        if (json.projectStatus.status != 'OK') {
-                            error "SonarQube quality gate failed: ${json.projectStatus.status}"
-                        } else {
-                            echo "Quality gate passed successfully."
+                        script {
+                            // 使用withCredentials从Jenkins凭据中获取SonarQube token
+                            withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
+                                // 执行sonar-scanner命令
+                                sh """
+                                sonar-scanner \
+                                  -Dsonar.projectKey=${JOB_NAME} \
+                                  -Dsonar.projectName='${env.IMAGE_NAMESPACE}' \
+                                  -Dsonar.projectVersion=${env.VERSION_TAG} \
+                                  -Dsonar.sources=. \
+                                  -Dsonar.exclusions='**/*_test.go,**/vendor/**' \
+                                  -Dsonar.language=go \
+                                  -Dsonar.host.url=http://${env.SONARQUBE_DOMAIN} \
+                                  -Dsonar.login=${SONAR_TOKEN} \
+                                  -Dsonar.projectBaseDir=${env.BUILD_DIRECTORY}
+                                """
+                            }
+                            
+                            // 使用script块处理HTTP请求和JSON解析
+                            withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
+                                def authHeader = "Basic " + ("${SONAR_TOKEN}:".bytes.encodeBase64().toString())
+                                def response = httpRequest(
+                                    url: "http://${env.SONARQUBE_DOMAIN}/api/qualitygates/project_status?projectKey=${JOB_NAME}",
+                                    customHeaders: [[name: 'Authorization', value: authHeader]],
+                                    consoleLogResponseBody: true,
+                                    acceptType: 'APPLICATION_JSON',
+                                    contentType: 'APPLICATION_JSON'
+                                )
+                                def json = readJSON text: response.content
+                                if (json.projectStatus.status != 'OK') {
+                                    error "SonarQube quality gate failed: ${json.projectStatus.status}"
+                                } else {
+                                    echo "Quality gate passed successfully."
+                                }
+                            }
                         }
                     }
                 }
             }
         }
-    }
-}
+
+
         // 并行构建阶段
         stage('Parallel Build') {
             parallel {
@@ -907,9 +912,7 @@ pipeline {
                 }
             }
         }
-        
-        
-        
+
     }
 }
 
