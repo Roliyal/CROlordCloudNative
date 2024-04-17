@@ -1047,12 +1047,11 @@ terminationGracePeriodSeconds: 60
 4. 使用自定义Values文件安装SonarQube
  - 修改values.yaml文件后，使用以下命令，通过自定义的values.yaml文件安装SonarQube：
 ```shell
-helm upgrade --install -n cicd --version '~8' sonarqube sonarqube/sonarqube -f values.yaml```
+helm upgrade --install -n cicd --version '~8' sonarqube sonarqube/sonarqube -f values.yaml
+```
  - 确保将<-n cicd >替换为实际的命名空间。
-
 5. 访问SonarQube
    - 安装完成后，你可能需要执行一些额外的步骤来访问SonarQube界面，使用 MSE 查看SonarQube的IP地址，需要MSE控制台登录查看，并做域名映射。
-   
 ```shell
 [root@CROLord ~]#helm upgrade --install -n cicd --version '~8' sonarqube sonarqube/sonarqube -f values.yaml```
 NAMESPACE: cicd
