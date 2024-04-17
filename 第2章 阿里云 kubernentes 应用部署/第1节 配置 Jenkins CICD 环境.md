@@ -475,21 +475,51 @@ helm show values sonarqube/sonarqube > values.yaml
 这会将当前图表的默认配置输出到values.yaml文件中。然后，你可以使用任何文本编辑器打开这个文件，并根据需要修改配置。比如，你可能想要修改以下一些配置：
 ```yaml
 # Default values for sonarqube.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# If the deployment Type is set to Deployment sonarqube is deployed as a replica set.
 deploymentType: "StatefulSet"
+
+# There should not be more than 1 sonarqube instance connected to the same database. Please set this value to 1 or 0 (in case you need to scale down programmatically).
 replicaCount: 1
+
+# How many revisions to retain (Deployment ReplicaSets or StatefulSets)
 revisionHistoryLimit: 10
+
+# This will use the default deployment strategy unless it is overriden
 deploymentStrategy: {}
+# Uncomment this to scheduler pods on priority
+# priorityClassName: "high-priority"
+
+## Use an alternate scheduler, e.g. "stork".
+## ref: https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/
+##
+# schedulerName:
+
+## Is this deployment for OpenShift? If so, we help with SCCs
 OpenShift:
   enabled: false
   createSCC: true
+
 edition: "community"
+
 image:
   repository: sonarqube
   tag: 10.4.1-{{ .Values.edition }}
   pullPolicy: IfNotPresent
+  # If using a private repository, the imagePullSecrets to use
+  # pullSecrets:
+  #   - name: my-repo-secret
+
+# Set security context for sonarqube pod
 securityContext:
   fsGroup: 0
+
+# Set security context for sonarqube container
 containerSecurityContext:
+  # Sonarqube dockerfile creates sonarqube user as UID and GID 0
+  # Those default are used to match pod security standard restricted as least privileged approach
   allowPrivilegeEscalation: false
   runAsNonRoot: true
   runAsUser: 1000
@@ -498,53 +528,146 @@ containerSecurityContext:
     type: RuntimeDefault
   capabilities:
     drop: ["ALL"]
+
+# Settings to configure elasticsearch host requirements
 elasticsearch:
+  # DEPRECATED: Use initSysctl.enabled instead
   configureNode: false
   bootstrapChecks: true
+
 service:
   type: ClusterIP
   externalPort: 9000
   internalPort: 9000
   labels:
   annotations: {}
+  # May be used in example for internal load balancing in GCP:
+  # cloud.google.com/load-balancer-type: Internal
+  # loadBalancerSourceRanges:
+  #   - 0.0.0.0/0
+  # loadBalancerIP: 1.2.3.4
+
+# Optionally create Network Policies
 networkPolicy:
   enabled: false
+
+  # If you plan on using the jmx exporter, you need to define where the traffic is coming from
   prometheusNamespace: "monitoring"
+
+  # If you are using a external database and enable network Policies to be created
+  # you will need to explicitly allow egress traffic to your database
+  # expects https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.21/#networkpolicyspec-v1-networking-k8s-io
+  # additionalNetworkPolicys:
+
+# will be used as default for ingress path and probes path, will be injected in .Values.env as SONAR_WEB_CONTEXT
+# if .Values.env.SONAR_WEB_CONTEXT is set, this value will be ignored
 sonarWebContext: ""
+
+# also install the nginx ingress helm chart
 nginx:
   enabled: false
+
 ingress:
-  enabled: false
+  enabled: true
+  apiVersion: "networking.k8s.io/v1"
   hosts:
-    - name: sonarqube.your-org.com
-  annotations: {}
+    - name: sonarqube.roliyal.com
+      path: /
+      servicePort: 9000
+      pathType: ImplementationSpecific
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  ingressClassName: mse
+
   tls: []
+  # - secretName: chart-example-tls
+  #   hosts:
+  #     - chart-example.local
+
 route:
   enabled: false
   host: ""
+  # Add tls section to secure traffic. TODO: extend this section with other secure route settings
+  # Comment this out if you want plain http route created.
   tls:
     termination: edge
+
   annotations: {}
+  # See Openshift/OKD route annotation
+  # https://docs.openshift.com/container-platform/4.10/networking/routes/route-configuration.html#nw-route-specific-annotations_route-configuration
+  # haproxy.router.openshift.io/timeout: 1m
+
+  # Additional labels for Route manifest file
+  # labels:
+  #  external: 'true'
+
+# Affinity for pod assignment
+# Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
 affinity: {}
+
+# Tolerations for pod assignment
+# Ref: https://kubernetes.io/docs/concepts/configuration/taint-and-toleration/
+# taint a node with the following command to mark it as not schedulable for new pods
+# kubectl taint nodes <node> sonarqube=true:NoSchedule
+# The following statement will tolerate this taint and as such reverse a node for sonarqube
 tolerations: []
+#  - key: "sonarqube"
+#    operator: "Equal"
+#    value: "true"
+#    effect: "NoSchedule"
+
+# Node labels for pod assignment
+# Ref: https://kubernetes.io/docs/user-guide/node-selection/
+# add a label to a node with the following command
+# kubectl label node <node> sonarqube=true
 nodeSelector: {}
+#  sonarqube: "true"
+
+# hostAliases allows the modification of the hosts file inside a container
 hostAliases: []
+# - ip: "192.168.1.10"
+#   hostnames:
+#   - "example.com"
+#   - "www.example.com"
+
 readinessProbe:
   initialDelaySeconds: 60
   periodSeconds: 30
   failureThreshold: 6
+  # Note that timeoutSeconds was not respected before Kubernetes 1.20 for exec probes
   timeoutSeconds: 1
+  # If an ingress *path* other than the root (/) is defined, it should be reflected here
+  # A trailing "/" must be included
+  # deprecated please use sonarWebContext at the value top level
+  # sonarWebContext: /
+
 livenessProbe:
   initialDelaySeconds: 60
   periodSeconds: 30
   failureThreshold: 6
+  # Note that timeoutSeconds was not respected before Kubernetes 1.20 for exec probes
   timeoutSeconds: 1
+  # If an ingress *path* other than the root (/) is defined, it should be reflected here
+  # A trailing "/" must be included
+  # deprecated please use sonarWebContext at the value top level
+  # sonarWebContext: /
+
 startupProbe:
   initialDelaySeconds: 30
   periodSeconds: 10
   failureThreshold: 24
+  # Note that timeoutSeconds was not respected before Kubernetes 1.20 for exec probes
   timeoutSeconds: 1
+  # If an ingress *path* other than the root (/) is defined, it should be reflected here
+  # A trailing "/" must be included
+  # deprecated please use sonarWebContext at the value top level
+  # sonarWebContext: /
+
 initContainers:
+  # image: busybox:1.36
+  # We allow the init containers to have a separate security context declaration because
+  # the initContainer may not require the same as SonarQube.
+  # Those default are used to match pod security standard restricted as least privileged approach
   securityContext:
     allowPrivilegeEscalation: false
     runAsNonRoot: true
@@ -554,24 +677,49 @@ initContainers:
       type: RuntimeDefault
     capabilities:
       drop: ["ALL"]
+  # We allow the init containers to have a separate resources declaration because
+  # the initContainer does not take as much resources.
   resources: {}
+
+# Extra init containers to e.g. download required artifacts
 extraInitContainers: {}
+
+## Array of extra containers to run alongside the sonarqube container
+##
+## Example:
+## - name: myapp-container
+##   image: busybox
+##   command: ['sh', '-c', 'echo Hello && sleep 3600']
+##
 extraContainers: []
+
+## Provide a secret containing one or more certificate files in the keys that will be added to cacerts
+## The cacerts file will be set via SONARQUBE_WEB_JVM_OPTS and SONAR_CE_JAVAOPTS
+##
 caCerts:
   enabled: false
   image: adoptopenjdk/openjdk11:alpine
   secret: your-secret
+
 initSysctl:
   enabled: true
   vmMaxMapCount: 524288
   fsFileMax: 131072
   nofile: 131072
   nproc: 8192
+  # image: busybox:1.36
   securityContext:
+    # Compatible with podSecurity standard privileged
     privileged: true
+    # if run without root permissions, error "sysctl: permission denied on key xxx, ignoring"
     runAsUser: 0
+  # resources: {}
+
+# This should not be required anymore, used to chown/chmod folder created by faulty CSI driver that are not applying properly POSIX fsgroup.
 initFs:
   enabled: true
+  # Image: busybox:1.36
+  # Compatible with podSecurity standard baseline.
   securityContext:
     privileged: false
     runAsNonRoot: false
@@ -582,27 +730,104 @@ initFs:
     capabilities:
       drop: ["ALL"]
       add: ["CHOWN"]
+
 prometheusExporter:
   enabled: false
+  # jmx_prometheus_javaagent version to download from Maven Central
   version: "0.17.2"
+  # Alternative full download URL for the jmx_prometheus_javaagent.jar (overrides prometheusExporter.version)
+  # downloadURL: ""
+  # if you need to ignore TLS certificates for whatever reason enable the following flag
   noCheckCertificate: false
+
+  # Ports for the jmx prometheus agent to export metrics at
   webBeanPort: 8000
   ceBeanPort: 8001
+
   config:
     rules:
       - pattern: ".*"
+  # Overrides config for the CE process Prometheus exporter (by default, the same rules are used for both the Web and CE processes).
+  # ceConfig:
+  #   rules:
+  #     - pattern: ".*"
+  # image: curlimages/curl:8.2.1
+  # For use behind a corporate proxy when downloading prometheus
+  # httpProxy: ""
+  # httpsProxy: ""
+  # noProxy: ""
+  # Reuse default initcontainers.securityContext that match restricted pod security standard
+  # securityContext: {}
+
 prometheusMonitoring:
+  # Generate a Prometheus Pod Monitor (https://github.com/coreos/prometheus-operator)
+  #
   podMonitor:
+    # Create PodMonitor Resource for Prometheus scraping
     enabled: false
+    # Specify a custom namespace where the PodMonitor will be created
     namespace: "default"
+    # Specify the interval how often metrics should be scraped
     interval: 30s
+    # Specify the timeout after a scrape is ended
+    # scrapeTimeout: ""
+    # Name of the label on target services that prometheus uses as job name
+    # jobLabel: ""
+
+# List of plugins to install.
+# For example:
+# plugins:
+#  install:
+#    - "https://github.com/AmadeusITGroup/sonar-stash/releases/download/1.3.0/sonar-stash-plugin-1.3.0.jar"
+#    - "https://github.com/SonarSource/sonar-ldap/releases/download/2.2-RC3/sonar-ldap-plugin-2.2.0.601.jar"
+#
 plugins:
   install: []
+
+  # For use behind a corporate proxy when downloading plugins
+  # httpProxy: ""
+  # httpsProxy: ""
+  # noProxy: ""
+
+  # image: curlimages/curl:8.2.1
+  # resources: {}
+
+  # .netrc secret file with a key "netrc" to use basic auth while downloading plugins
+  # netrcCreds: ""
+
+  # Set to true to not validate the server's certificate to download plugin
   noCheckCertificate: false
+  # Reuse default initcontainers.securityContext that match restricted pod security standard
+  # securityContext: {}
+
+## (DEPRECATED) The following value sets SONAR_WEB_JAVAOPTS (e.g., jvmOpts: "-Djava.net.preferIPv4Stack=true"). However, this is deprecated, please set SONAR_WEB_JAVAOPTS or sonar.web.javaOpts directly instead.
 jvmOpts: ""
+
+## (DEPRECATED) The following value sets SONAR_CE_JAVAOPTS. However, this is deprecated, please set SONAR_CE_JAVAOPTS or sonar.ce.javaOpts directly instead.
 jvmCeOpts: ""
+
+## a monitoring passcode needs to be defined in order to get reasonable probe results
+# not setting the monitoring passcode will result in a deployment that will never be ready
 monitoringPasscode: "define_it"
+# Alternatively, you can define the passcode loading it from an existing secret specifying the right key
+# monitoringPasscodeSecretName: "pass-secret-name"
+# monitoringPasscodeSecretKey: "pass-key"
+
+## Environment variables to attach to the pods
+##
+# env:
+#   # If you use a different ingress path from /, you have to add it here as the value of SONAR_WEB_CONTEXT
+#   - name: SONAR_WEB_CONTEXT
+#     value: /sonarqube
+#   - name: VARIABLE
+#     value: my-value
+
+# Set annotations for pods
 annotations: {}
+
+## We usually don't make specific ressource recommandations, as they are heavily dependend on
+## The usage of SonarQube and the surrounding infrastructure.
+## Adjust these values to your needs, but make sure that the memory limit is never under 4 GB
 resources:
   limits:
     cpu: 800m
@@ -610,27 +835,95 @@ resources:
   requests:
     cpu: 400m
     memory: 2Gi
+
 persistence:
   enabled: true
+  ## Set annotations on pvc
   annotations: {}
-  storageClass: "alicloud-disk-topology-alltype" #依次尝试创建指定的存储类型，并且使用WaitForFirstConsumer模式，可以兼容多可用区集群。 [参考StorageClass](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/disk-volume-overview-3#p-y0r-qmp-hxh)
+
+  ## Specify an existing volume claim instead of creating a new one.
+  ## When using this option all following options like storageClass, accessMode and size are ignored.
+  # existingClaim:
+
+  ## If defined, storageClassName: <storageClass>
+  ## If set to "-", storageClassName: "", which disables dynamic provisioning
+  ## If undefined (the default) or set to null, no storageClassName spec is
+  ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+  ##   GKE, AWS & OpenStack)
+  ##
+  storageClass: "alicloud-disk-topology-alltype"
   accessMode: ReadWriteOnce
-  size: "100Gi"
+  size: 50Gi
   uid: 1000
   guid: 0
+
+  ## Specify extra volumes. Refer to ".spec.volumes" specification : https://kubernetes.io/fr/docs/concepts/storage/volumes/
   volumes: []
+  ## Specify extra mounts. Refer to ".spec.containers.volumeMounts" specification : https://kubernetes.io/fr/docs/concepts/storage/volumes/
   mounts: []
+
+# In case you want to specify different resources for emptyDir than {}
 emptyDir: {}
+  # Example of resouces that might be used:
+  # medium: Memory
+# sizeLimit: 16Mi
+
+# A custom sonar.properties file can be provided via dictionary.
+# For example:
+# sonarProperties:
+#   sonar.forceAuthentication: true
+#   sonar.security.realm: LDAP
+#   ldap.url: ldaps://organization.com
+
+# Additional sonar properties to load from a secret with a key "secret.properties" (must be a string)
+# sonarSecretProperties:
+
+# Kubernetes secret that contains the encryption key for the sonarqube instance.
+# The secret must contain the key 'sonar-secret.txt'.
+# The 'sonar.secretKeyPath' property will be set automatically.
+# sonarSecretKey: "settings-encryption-secret"
+
+## Override JDBC values
+## for external Databases
 jdbcOverwrite:
+  # If enable the JDBC Overwrite, make sure to set `postgresql.enabled=false`
   enable: false
+  # The JDBC url of the external DB
   jdbcUrl: "jdbc:postgresql://myPostgress/myDatabase?socketTimeout=1500"
+  # The DB user that should be used for the JDBC connection
   jdbcUsername: "sonarUser"
+  # Use this if you don't mind the DB password getting stored in plain text within the values file
   jdbcPassword: "sonarPass"
+  ## Alternatively, use a pre-existing k8s secret containing the DB password
+  # jdbcSecretName: "sonarqube-jdbc"
+  ## and the secretValueKey of the password found within that secret
+  # jdbcSecretPasswordKey: "jdbc-password"
+
+## (DEPRECATED) Configuration values for postgresql dependency
+## ref: https://github.com/bitnami/charts/blob/master/bitnami/postgresql/README.md
 postgresql:
+  # Enable to deploy the bitnami PostgreSQL chart
   enabled: true
+  ## postgresql Chart global settings
+  # global:
+  #   imageRegistry: ''
+  #   imagePullSecrets: ''
+  ## bitnami/postgres image tag
+  # image:
+  #   tag: 11.7.0-debian-10-r9
+  # existingSecret Name of existing secret to use for PostgreSQL passwords
+  # The secret has to contain the keys postgresql-password which is the password for postgresqlUsername when it is
+  # different of postgres, postgresql-postgres-password which will override postgresqlPassword,
+  # postgresql-replication-password which will override replication.password and postgresql-ldap-password which will be
+  # used to authenticate on LDAP. The value is evaluated as a template.
+  # existingSecret: ""
+  #
+  # The bitnami chart enforces the key to be "postgresql-password". This value is only here for historic purposes
+  # existingSecretPasswordKey: "postgresql-password"
   postgresqlUsername: "sonarUser"
   postgresqlPassword: "sonarPass"
   postgresqlDatabase: "sonarDB"
+  # Specify the TCP port that PostgreSQL should use
   service:
     port: 5432
   resources:
@@ -643,13 +936,21 @@ postgresql:
   persistence:
     enabled: true
     accessMode: ReadWriteOnce
-    size: 20Gi
-    storageClass: "alicloud-disk-topology-alltype" #依次尝试创建指定的存储类型，并且使用WaitForFirstConsumer模式，可以兼容多可用区集群。 [参考StorageClass](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/disk-volume-overview-3#p-y0r-qmp-hxh)
+    size: 40Gi
+    storageClass: "alicloud-disk-topology-alltype"
   securityContext:
+    # For standard Kubernetes deployment, set enabled=true
+    # If using OpenShift, enabled=false for restricted SCC and enabled=true for anyuid/nonroot SCC
     enabled: true
+    # fsGroup specification below are not applied if enabled=false. enabled=false is the required setting for OpenShift "restricted SCC" to work successfully.
+    # postgresql dockerfile sets user as 1001
     fsGroup: 1001
   containerSecurityContext:
+    # For standard Kubernetes deployment, set enabled=true
+    # If using OpenShift, enabled=false for restricted SCC and enabled=true for anyuid/nonroot SCC
     enabled: true
+    # runAsUser specification below are not applied if enabled=false. enabled=false is the required setting for OpenShift "restricted SCC" to work successfully.
+    # postgresql dockerfile sets user as 1001, the rest aim at making it compatible with restricted pod security standard.
     runAsUser: 1001
     allowPrivilegeEscalation: false
     runAsNonRoot: true
@@ -658,57 +959,117 @@ postgresql:
     capabilities:
       drop: ["ALL"]
   volumePermissions:
+    # For standard Kubernetes deployment, set enabled=false
+    # For OpenShift, set enabled=true and ensure to set volumepermissions.securitycontext.runAsUser below.
     enabled: false
+    # if using restricted SCC set runAsUser: "auto" and if running under anyuid/nonroot SCC - runAsUser needs to match runAsUser above
     securityContext:
       runAsUser: 0
   shmVolume:
     chmod:
       enabled: false
   serviceAccount:
+    ## If enabled = true, and name is not set, postgreSQL will create a serviceAccount
     enabled: false
+    # name:
+
+# Additional labels to add to the pods:
+# podLabels:
+#   key: value
 podLabels: {}
+# For compatibility with 8.0 replace by "/opt/sq"
+# For compatibility with 8.2, leave the default. They changed it back to /opt/sonarqube
 sonarqubeFolder: /opt/sonarqube
+
 tests:
   image: ""
   enabled: true
   resources: {}
+
+# For OpenShift set create=true to ensure service account is created.
 serviceAccount:
   create: false
+  # name:
+  # automountToken: false # default
+  ## Annotations for the Service Account
   annotations: {}
+
+# extraConfig is used to load Environment Variables from Secrets and ConfigMaps
+# which may have been written by other tools, such as external orchestrators.
+#
+# These Secrets/ConfigMaps are expected to contain Key/Value pairs, such as:
+#
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: external-sonarqube-opts
+# data:
+#   SONARQUBE_JDBC_USERNAME: foo
+#   SONARQUBE_JDBC_URL: jdbc:postgresql://db.example.com:5432/sonar
+#
+# These vars can then be injected into the environment by uncommenting the following:
+#
+# extraConfig:
+#   configmaps:
+#     - external-sonarqube-opts
+
 extraConfig:
   secrets: []
   configmaps: []
+
+# account:
+# The values can be set to define the current and the (new) custom admin passwords at the startup (the username will remain "admin")
+#   adminPassword: admin
+#   currentAdminPassword: admin
+# The above values can be also provided by a secret that contains "password" and "currentPassword" as keys. You can generate such a secret in your cluster
+# using "kubectl create secret generic admin-password-secret-name --from-literal=password=admin --from-literal=currentPassword=admin"
+#   adminPasswordSecretName: ""
+# # Reuse default initcontainers.securityContext that match restricted pod security standard
+# #   securityContext: {}
+#   resources:
+#     limits:
+#       cpu: 100m
+#       memory: 128Mi
+#     requests:
+#       cpu: 100m
+#       memory: 128Mi
+# curlContainerImage: curlimages/curl:8.2.1
+# adminJobAnnotations: {}
+# deprecated please use sonarWebContext at the value top level
+#   sonarWebContext: /
 terminationGracePeriodSeconds: 60
 ```
-- 持久化存储选项
-- SonarQube版本
-- 插件安装
+- 持久化存储选择阿里云 storageClass 存储类，
+- SonarQube版本 选择8.9.9
+- 插件安装 
 - 资源限制（CPU、内存）
-- 服务类型（比如，使用LoadBalancer公开SonarQube）
+- 服务类型（比如，使用 clusterIP 以 mse ingress 访问）
 4. 使用自定义Values文件安装SonarQube
  - 修改values.yaml文件后，使用以下命令，通过自定义的values.yaml文件安装SonarQube：
 ```shell
-helm install sonarqube sonarqube/sonarqube -f values.yaml --namespace cicd
-```
- - 确保将<your_namespace>替换为实际的命名空间。
+helm upgrade --install -n cicd --version '~8' sonarqube sonarqube/sonarqube -f values.yaml```
+ - 确保将<-n cicd >替换为实际的命名空间。
 
 5. 访问SonarQube
-   - 安装完成后，你可能需要执行一些额外的步骤来访问SonarQube界面。如果你将服务类型设置为LoadBalancer，可以通过以下命令获取外部IP：
-
+   - 安装完成后，你可能需要执行一些额外的步骤来访问SonarQube界面，使用 MSE 查看SonarQube的IP地址，需要MSE控制台登录查看，并做域名映射。
+   
 ```shell
-kubectl get svc --namespace cicd
-
+[root@CROLord ~]#helm upgrade --install -n cicd --version '~8' sonarqube sonarqube/sonarqube -f values.yaml```
+NAMESPACE: cicd
+STATUS: deployed
+REVISION: 2
+NOTES:
+1. Get the application URL by running these commands:
+  http://sonarqube.roliyal.com
+[root@CROLord ~]# 
 ```
-然后，使用返回的外部IP地址在浏览器中访问SonarQube。
+- 然后，使用返回的 http://sonarqube.roliyal.com 在浏览器中访问SonarQube。
 
-清理
-如果需要，你可以通过以下命令删除SonarQube实例：
-
+6. 清理
+    - 如果需要，你可以通过以下命令删除SonarQube实例：
 ```shell
-helm delete sonarqube --namespace cicd
+helm uninstall  -n cicd  sonarqube
 ```
-
-
 
 ```pipline
 pipeline {
