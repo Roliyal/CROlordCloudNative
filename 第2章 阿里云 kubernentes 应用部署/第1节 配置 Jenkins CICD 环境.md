@@ -1053,7 +1053,7 @@ helm upgrade --install -n cicd --version '~8' sonarqube sonarqube/sonarqube -f v
 5. 访问SonarQube
    - 安装完成后，你可能需要执行一些额外的步骤来访问SonarQube界面，使用 MSE 查看SonarQube的IP地址，需要MSE控制台登录查看，并做域名映射。
 ```shell
-[root@CROLord ~]#helm upgrade --install -n cicd --version '~8' sonarqube sonarqube/sonarqube -f values.yaml```
+[root@CROLord ~]#helm upgrade --install -n cicd --version '~8' sonarqube sonarqube/sonarqube -f values.yaml
 NAMESPACE: cicd
 STATUS: deployed
 REVISION: 2
