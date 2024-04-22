@@ -1272,7 +1272,31 @@ pipeline {
                 }
             }
         }
-
+        // 部署到 Kubernetes 集群
+        stage('Deploy to Kubernetes') {
+            agent { kubernetes { inheritFrom 'kanikoamd' } } 
+            steps {
+                unstash 'source-code' // 恢复之前存储的代码
+                container('kanikoamd') {
+                    script {
+                        withCredentials([file(credentialsId: 'crolorduat', variable: 'KUBECONFIG')]) {
+                            // 执行 kubectl 命令
+                            sh "kaniko version" 
+                            sh "kubectl get node"
+                            env.FULL_IMAGE_URL = "${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}"
+                            
+                            sh """
+                            cd ${env.WORKSPACE}/${params.BUILD_DIRECTORY}
+                            cp *.yaml updated-deployment.yaml
+                            sed -i 's|image:.*|image: ${env.FULL_IMAGE_URL}|' updated-deployment.yaml
+                            kubectl apply -f updated-deployment.yaml
+                            """
+                        }
+                    }
+                }
+            }
+        }
+    
     }
 }
 
