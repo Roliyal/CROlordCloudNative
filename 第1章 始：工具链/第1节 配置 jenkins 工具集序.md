@@ -279,6 +279,7 @@ kubectl patch secret secret-credentials -n cicd --patch='
  '
 ```
 ### 预期验证 secret-credentials 生效
+```shell
 [root@CROLord opt]# ll
 total 32
 -rw-r--r-- 1 root root 8002 Mar 15 20:58 crolord_prod.yaml
@@ -294,7 +295,7 @@ total 32
 >   --from-literal=acr-password=Q1******xMjM=
 secret/secret-credentials created
 [root@CROLord opt]# kubectl get secret secret-credentials -n cicd -o jsonpath="{.data.acr-username}" | base64 --decode
-
+```
 
 2.5 配置 Helm Jenkins values 配置清单
 
