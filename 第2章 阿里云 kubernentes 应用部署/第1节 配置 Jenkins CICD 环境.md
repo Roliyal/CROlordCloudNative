@@ -1301,3 +1301,201 @@ pipeline {
 }
 
 ```
+### OSS deploy pipeline 
+```pipline
+pipeline {
+    // 定义使用的 Jenkins agent 类型
+    agent { kubernetes { /* 配置省略 */ } }
+    
+    // 定义环境变量
+    environment {
+        GIT_BRANCH = 'main' // Git主分支的默认值
+        MAJOR_VERSION = 'v1' // 主版本号
+        MINOR_VERSION = '0'  // 次版本号
+        PLATFORMS = 'linux/amd64,linux/arm64' // 构建目标平台
+        MAJOR = "${params.MAJOR_VERSION ?: env.MAJOR_VERSION ?: '1'}" // 主版本号，允许通过参数覆盖
+        MINOR = "${params.MINOR_VERSION ?: env.MINOR_VERSION ?: '0'}" // 次版本号，允许通过参数覆盖
+        PATCH = "${env.BUILD_NUMBER}" // 构建号，用作修订版本号
+        VERSION_TAG = "${MAJOR}.${MINOR}.${PATCH}" // 组合版本标签
+        IMAGE_REGISTRY = "${params.IMAGE_REGISTRY}" // 镜像仓库地址
+        IMAGE_NAMESPACE = "${params.IMAGE_NAMESPACE}" // 镜像命名空间
+        IMAGE_ID = "${params.IMAGE_NAMESPACE}" // 镜像ID
+        SONARQUBE_DOMAIN = "${params.SONARQUBE_DOMAINE}" // Sonarqube 域名配置
+        DEPLOY_PATH = "${params.OSS_DEPLOY_PATH}"
+        OSSENDPOINT = "${params.OSSENDPOINT}"
+        OSSBUCKET = "${params.OSSBUCKET}"
+        DEPLOY_ENVIRONMENT = "${params.DEPLOY_ENVIRONMENT}"  // 直接使用参数作为环境变量
+    }
+
+    // 触发条件
+    triggers { githubPush() }
+
+    // 参数定义
+    parameters {
+        persistentString(name: 'BRANCH', defaultValue: 'main', description: 'Initial default branch: main')
+        persistentChoice(name: 'PLATFORMS', choices: ['linux/amd64', 'linux/amd64,linux/arm64'], description: 'Target platforms, initial value: linux/amd64,linux/arm64')
+        persistentString(name: 'GIT_REPOSITORY', defaultValue: 'https://github.com/Roliyal/CROlordCodelibrary.git', description: 'Git repository URL, default: https://github.com/Roliyal/CROlordCodelibrary.git')
+        persistentString(name: 'MAJOR_VERSION', defaultValue: '1', description: 'Major version number, default: 1')
+        persistentString(name: 'MINOR_VERSION', defaultValue: '0', description: 'Minor version number, default: 0')
+        persistentString(name: 'BUILD_DIRECTORY', defaultValue: 'Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/vue-go-guess-number', description: 'Build directory path, default path: Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/go-guess-number')
+        persistentString(name: 'IMAGE_REGISTRY', defaultValue: 'crolord-registry-registry-vpc.cn-hongkong.cr.aliyuncs.com', description: 'Image registry address, default: crolord-registry-registry-vpc.cn-hongkong.cr.aliyuncs.com')
+        persistentString(name: 'IMAGE_NAMESPACE', defaultValue: 'febe', description: 'Image namespace, default: febe')
+        persistentString(name: 'SONARQUBE_DOMAINE', defaultValue: 'sonarqube.roliyal.com', description: 'SonarQube domain, default: sonarqube.roliyal.com')
+        persistentString(name: 'OSS_DEPLOY_PATH', defaultValue: '', description: 'The OSS path where artifacts will be deployed')
+        persistentString(name: 'OSSENDPOINT', defaultValue: 'oss-cn-hongkong.aliyuncs.com', description: 'The OSSEndpoin address default:oss-cn-hongkong.aliyuncs.com')
+        persistentString(name: 'OSSBUCKET', defaultValue: 'febe', description: 'The OSS Bucket address default:febecrolord')
+        choice(name: 'DEPLOY_ENVIRONMENT', choices: ['development', 'staging', 'production'], description: 'The deployment environment')
+    }
+    
+        // 构建流程定义
+        stages {
+            // 设置版本信息
+            stage('Version') {
+                steps {
+                    script {
+                        env.PATCH_VERSION = env.BUILD_NUMBER
+                        env.VERSION_NUMBER = "${env.MAJOR}.${env.MINOR}.${env.PATCH_VERSION}"
+                        echo "Current Version: ${env.VERSION_NUMBER}"
+                    }
+                }
+            }
+        // 检出代码
+        stage('Checkout') {
+            steps {
+                cleanWs() // 清理工作空间
+                script {
+                    env.GIT_BRANCH = params.BRANCH
+                }
+                // 检出Git仓库
+                checkout scm: [
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${env.GIT_BRANCH}"]],
+                    userRemoteConfigs: [[url: params.GIT_REPOSITORY]],
+                    extensions: [[$class: 'CloneOption', depth: 1, noTags: false, reference: '', shallow: true]]
+                ]
+                echo '代码检出完成'
+            }
+        }
+        // 检查目录和Dockerfile
+        stage('Check Directory') {
+            steps {
+                echo "Current working directory: ${pwd()}"
+                sh 'ls -la'
+                stash includes: '**', name: 'source-code' // 存储工作空间，包括Dockerfile和应用代码
+            }
+        }
+        stage('SonarQube analysis') {
+            agent { kubernetes { inheritFrom 'kanikoamd' } }
+            steps {
+                // 从之前的阶段恢复存储的源代码
+                unstash 'source-code'
+                // 指定在特定容器中执行
+                container('kanikoamd') {
+                    // 设置SonarQube环境
+                    withSonarQubeEnv('sonar') {
+                        script {
+                            // 使用withCredentials从Jenkins凭据中获取SonarQube token
+                            withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
+                                // 执行sonar-scanner命令
+                                sh """
+                                sonar-scanner \
+                                  -Dsonar.projectKey=${JOB_NAME} \
+                                  -Dsonar.projectName='${env.IMAGE_NAMESPACE}' \
+                                  -Dsonar.projectVersion=${env.VERSION_TAG} \
+                                  -Dsonar.sources=. \
+                                  -Dsonar.exclusions='**/*_test.go,**/vendor/**' \
+                                  -Dsonar.language=go \
+                                  -Dsonar.host.url=http://${env.SONARQUBE_DOMAIN} \
+                                  -Dsonar.login=${SONAR_TOKEN} \
+                                  -Dsonar.projectBaseDir=${env.BUILD_DIRECTORY} 
+                                """
+                            }
+                            // 使用script块处理HTTP请求和JSON解析
+                            withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
+                                def authHeader = "Basic " + ("${SONAR_TOKEN}:".bytes.encodeBase64().toString())
+                                def response = httpRequest(
+                                    url: "http://${env.SONARQUBE_DOMAIN}/api/qualitygates/project_status?projectKey=${JOB_NAME}",
+                                    customHeaders: [[name: 'Authorization', value: authHeader]],
+                                    consoleLogResponseBody: true,
+                                    acceptType: 'APPLICATION_JSON',
+                                    contentType: 'APPLICATION_JSON'
+                                )
+                                def json = readJSON text: response.content
+                                if (json.projectStatus.status != 'OK') {
+                                    error "SonarQube quality gate failed: ${json.projectStatus.status}"
+                                } else {
+                                    echo "Quality gate passed successfully."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        stage('node oss push') {
+            agent { kubernetes { inheritFrom 'nodeoss' } }
+            steps {
+                // 从之前的阶段恢复存储的源代码
+                unstash 'source-code'
+                // 指定在特定容器中执行            
+                container('nodeoss') {
+                    script {
+                        echo "Deploying to environment: ${env.DEPLOY_ENVIRONMENT}"
+                            // 使用 withCredentials 从 Jenkins 凭证存储中安全获取敏感信息
+                            withCredentials([string(credentialsId: 'access_key_id', variable: 'ACCESS_KEY_ID'),
+                                             string(credentialsId: 'access_key_secret', variable: 'ACCESS_KEY_SECRET')]) {
+                            def buildDir = env.BUILD_DIRECTORY
+                            sh "bash -c 'cd ${buildDir} && npm install && npm run build'"
+                            // 构建存储桶名称
+                            def bucketName = "${env.OSSBUCKET}-${env.DEPLOY_ENVIRONMENT}" 
+                            // 配置 ossutil 和检查存储桶是否存在，以及初始化静态页面、版本控制特性等
+                            sh "ossutil config -e ${env.OSSENDPOINT} -i ${ACCESS_KEY_ID} -k ${ACCESS_KEY_SECRET}"
+                            def bucketExists = sh(script: "ossutil ls oss://${bucketName} --endpoint ${env.OSSENDPOINT}", returnStatus: true)
+                            if (bucketExists != 0) {
+                                sh "ossutil mb oss://${bucketName} --acl public-read --storage-class Standard --redundancy-type ZRS --endpoint ${env.OSSENDPOINT}"
+                            script {
+                            def websiteConfig = httpRequest(
+                                url: 'https://raw.githubusercontent.com/Roliyal/CROLordSharedLlibraryCode/main/localhostnorouting.xml',
+                                outputFile: "localhostnorouting.xml"
+                            )
+                            sh "ossutil website --method put oss://${bucketName}  localhostnorouting.xml "
+                            sh "ossutil bucket-versioning --method put oss://${bucketName} enabled "
+                        }
+                            }
+                            // 上传 dist 目录到 OSS
+                            sh "cd ${buildDir} && ossutil cp -rf dist oss://${bucketName}/ --endpoint ${env.OSSENDPOINT}"
+                            echo "Deployment to OSS completed: ${bucketName}"
+                            // sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'"
+                        }
+                    }
+                }
+            }
+        }
+        
+        
+        //是否恢复，取决测试验证结果，如满足部署选择 NO，如验证版本 bug 需要恢复选择 Yes
+        stage('Revert to Previous Version') {
+            steps {
+                script {
+                    // 提示用户是否恢复到上一个版本
+                    def userInput = input message: 'Do you want to revert to the previous version?',
+                                         parameters: [choice(name: 'Revert', choices: 'No\nYes', description: 'Select Yes to revert, No to continue')]
+                    if (userInput == 'Yes') {
+                        // 使用 withCredentials 从 Jenkins 凭证存储中安全获取敏感信息
+                        withCredentials([string(credentialsId: 'access_key_id', variable: 'ACCESS_KEY_ID'),
+                                         string(credentialsId: 'access_key_secret', variable: 'ACCESS_KEY_SECRET')]) {
+                            def bucketName = "${env.OSSBUCKET}-${env.DEPLOY_ENVIRONMENT}"
+                            sh "ossutil config -e ${env.OSSENDPOINT} -i ${ACCESS_KEY_ID} -k ${ACCESS_KEY_SECRET}"
+                            // 恢复到上一个版本
+                            sh "ossutil revert-versioning  oss://${bucketName} -r "    
+                            echo "Reverted to previous version on bucket: ${bucketName}"
+                        }
+                    } else {
+                        echo "No revert action performed. Continuing with current deployment."
+                    }
+                }
+            }
+        }
+    }
+}
+```
