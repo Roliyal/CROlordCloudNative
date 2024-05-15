@@ -1103,13 +1103,14 @@ helm uninstall  -n cicd  sonarqube
 ```pipline
 pipeline {
     // 定义使用的 Jenkins agent 类型
-    agent { kubernetes { /* 配置省略 */ } }
+    agent any
     
     // 定义环境变量
     environment {
         GIT_BRANCH = 'main' // Git主分支的默认值
         MAJOR_VERSION = 'v1' // 主版本号
         MINOR_VERSION = '0'  // 次版本号
+        //PLATFORMS = 'linux/amd64,linux/arm64' // 构建目标平台
         MAJOR = "${params.MAJOR_VERSION ?: env.MAJOR_VERSION ?: '1'}" // 主版本号，允许通过参数覆盖
         MINOR = "${params.MINOR_VERSION ?: env.MINOR_VERSION ?: '0'}" // 次版本号，允许通过参数覆盖
         PATCH = "${env.BUILD_NUMBER}" // 构建号，用作修订版本号
@@ -1127,7 +1128,7 @@ pipeline {
     // 参数定义
     parameters {
         string(name: 'BRANCH', defaultValue: 'main', description: 'Initial default branch: main')
-        choice(name: 'PLATFORMS', choices: ['linux/amd64', 'linux/arm64'], description: 'Target platforms, initial value: linux/amd64')
+        choice(name: 'PLATFORMS', choices: ['linux/amd64', 'linux/arm64','linux/amd64,linux/arm64'], description: 'Target platforms, initial value: linux/amd64')
         string(name: 'GIT_REPOSITORY', defaultValue: 'https://github.com/Roliyal/CROlordCodelibrary.git', description: 'Git repository URL, default: https://github.com/Roliyal/CROlordCodelibrary.git')
         string(name: 'MAJOR_VERSION', defaultValue: '1', description: 'Major version number, default: 1')
         string(name: 'MINOR_VERSION', defaultValue: '0', description: 'Minor version number, default: 0')
@@ -1227,8 +1228,7 @@ pipeline {
                 }
             }
         }
-        
-        
+               
         stage('Print PLATFORMS') {
             steps {
                 script {
@@ -1236,14 +1236,12 @@ pipeline {
                 }
             }
         }
-
-
-        // 判断架构进行构建
-         
+        
+        // 判断架构进行构建         
         stage('Parallel Build') {
             when {
                 expression {
-                env.PLATFORMS == 'linux/amd64' || env.PLATFORMS == 'linux/arm64'
+                env.PLATFORMS == 'linux/amd64' || env.PLATFORMS == 'linux/arm64' || env.PLATFORMS == 'linux/amd64,linux/arm64'
                 }
             }
             parallel {
@@ -1251,7 +1249,7 @@ pipeline {
                     stage('Build for amd64') {
                         when {   // 当 PLATFORMS 为 linux/amd64 时进行构建
                             expression { 
-                                def result = env.PLATFORMS == 'linux/amd64'
+                                def result = env.PLATFORMS == 'linux/amd64' || env.PLATFORMS == 'linux/amd64,linux/arm64'
                                 echo "Evaluation for 'linux/amd64': ${result}"
                                 return result
                             }
@@ -1283,7 +1281,7 @@ pipeline {
                         //PLATFORMS 为 linux/arm64 时进行构建
                         when {
                             expression { 
-                                def result = env.PLATFORMS == 'linux/arm64'
+                                def result = env.PLATFORMS == 'linux/arm64' || env.PLATFORMS == 'linux/amd64,linux/arm64'
                                 echo "Evaluation for 'linux/arm64': ${result}"
                                 return result
                             }
@@ -1333,7 +1331,7 @@ pipeline {
                 }
             }
             // 部署到 Kubernetes 集群
-            stage('Deploy to Kubernetes') {
+            /*stage('Deploy to Kubernetes') {
                 agent { kubernetes { inheritFrom 'kanikoamd' } } 
                 steps {
                     unstash 'source-code' // 恢复之前存储的代码
@@ -1355,10 +1353,11 @@ pipeline {
                         }
                     }
                 }
-        }
+        }*/
     
     }
 }
+
 
 
 ```
