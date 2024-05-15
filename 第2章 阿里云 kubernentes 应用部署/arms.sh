@@ -11,10 +11,3 @@ for DEPLOYMENT in $DEPLOYMENTS; do
   kubectl patch deployment "$DEPLOYMENT" -n $NAMESPACE --type merge -p "$PATCH_STRING"
 done
 echo "Updated all deployments with the specified labels in namespace $NAMESPACE…"
-
-@ echo off
-echo readly to close cloudmusic.exe
-taskkill /f /im "cloudmusic.exe"
-taskkill /f /im "cloudmusic_reporter.exe"
-echo exit
-exit
