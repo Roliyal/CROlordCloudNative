@@ -44,10 +44,14 @@
 - 第五章 可观测思考与实践
 
   - 5.0 &emsp;开源以及阿里云可观测体系前言
-  - 5.1 &emsp;如何性能测试配置云拨测测试
-  - 5.2 &emsp;APM工具配置
-  - 5.3 &emsp;链路追踪配置
-  - 5.4 &emsp;监控可视化屏幕配置
+  - 5.1 &emsp;开源方案最终效果展示
+  - 5.2 &emsp;阿里云产品最终效果展示
+  - 5.2 &emsp;开源APM方案
+  - 5.2.1 &emsp;方案介绍
+  - 5.2.2 &emsp;监控方案Exporter+Prometheus+Grafana
+  - 5.2.3 &emsp;日志方案Promtail+Loki+Grafana
+  - 5.2.4 &emsp;链路方案Otel+Tempo+Grafana
+  - 5.4 &emsp;OpenTelemetry规范统一协议
   - 5.5 &emsp;智能告警
   - 5.6 &emsp;小结
 - 第六章 两地三中心实践
