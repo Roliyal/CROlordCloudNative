@@ -418,6 +418,12 @@ FROM docker.io/bitnami/trivy:latest AS trivy
 # 使用 SonarScanner 的 Docker 镜像
 FROM sonarsource/sonar-scanner-cli:latest AS sonar-scanner
 
+# 使用 golang 的 Docker 镜像
+FROM golang:latest AS golang
+
+# 使用 node 的 Docker 镜像
+FROM node:latest AS node
+
 # 基础镜像 ubuntu 并指定标签，确保构建的一致性
 FROM ubuntu:20.04
 RUN apt-get update && apt-get install -y software-properties-common && \
@@ -445,6 +451,30 @@ COPY --from=trivy /opt/bitnami/trivy/bin/trivy /usr/local/bin/trivy
 # 从 sonar-scanner 阶段复制 sonar-scanner 二进制到当前镜像
 COPY --from=sonar-scanner /opt/sonar-scanner /opt/sonar-scanner
 ENV PATH="/opt/sonar-scanner/bin:${PATH}"
+
+# 从 golang 阶段复制 Go 二进制到当前镜像
+COPY --from=golang /usr/local/go /usr/local/go
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+# 从 node 阶段复制 Node.js 和 npm 到当前镜像
+COPY --from=node /usr/local/bin/node /usr/local/bin/
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
+COPY --from=node /usr/local/bin/npm /usr/local/bin/npm
+COPY --from=node /usr/local/bin/npx /usr/local/bin/npx
+
+# 验证工具是否安装成功
+RUN echo "Verifying installations..." && \
+    kaniko --help && \
+    manifest-tool --version && \
+    trivy --version && \
+    sonar-scanner --version && \
+    go version && \
+    node --version && \
+    npm --version && \
+    npx --version
+
+# 定义镜像入口点
+CMD ["bash"]
 
 
 ```
@@ -1376,153 +1406,293 @@ pipeline {
         persistentString(name: 'OSSENDPOINT', defaultValue: 'oss-cn-hongkong.aliyuncs.com', description: 'The OSSEndpoin address default:oss-cn-hongkong.aliyuncs.com')
         persistentString(name: 'OSSBUCKET', defaultValue: 'febe', description: 'The OSS Bucket address default:febecrolord')
         choice(name: 'DEPLOY_ENVIRONMENT', choices: ['development', 'staging', 'production'], description: 'The deployment environment')
+        booleanParam(name: 'REVERT_TO_PREVIOUS_VERSION', defaultValue: false, description: 'Select Yes to revert to previous version')
     }
     
-        // 构建流程定义
-        stages {
-            // 设置版本信息
-            stage('Version') {
-                steps {
-                    script {
-                        env.PATCH_VERSION = env.BUILD_NUMBER
-                        env.VERSION_NUMBER = "${env.MAJOR}.${env.MINOR}.${env.PATCH_VERSION}"
-                        echo "Current Version: ${env.VERSION_NUMBER}"
-                    }
-                }
-            }
-        // 检出代码
-        stage('Checkout') {
-            steps {
-                cleanWs() // 清理工作空间
-                script {
-                    env.GIT_BRANCH = params.BRANCH
-                }
-                // 检出Git仓库
-                checkout scm: [
-                    $class: 'GitSCM',
-                    branches: [[name: "*/${env.GIT_BRANCH}"]],
-                    userRemoteConfigs: [[url: params.GIT_REPOSITORY]],
-                    extensions: [[$class: 'CloneOption', depth: 1, noTags: false, reference: '', shallow: true]]
-                ]
-                echo '代码检出完成'
-            }
-        }
-        // 检查目录和Dockerfile
-        stage('Check Directory') {
-            steps {
-                echo "Current working directory: ${pwd()}"
-                sh 'ls -la'
-                stash includes: '**', name: 'source-code' // 存储工作空间，包括Dockerfile和应用代码
-            }
-        }
-        stage('SonarQube analysis') {
-            agent { kubernetes { inheritFrom 'kanikoamd' } }
-            steps {
-                // 从之前的阶段恢复存储的源代码
-                unstash 'source-code'
-                // 指定在特定容器中执行
-                container('kanikoamd') {
-                    // 设置SonarQube环境
-                    withSonarQubeEnv('sonar') {
-                        script {
-                            // 使用withCredentials从Jenkins凭据中获取SonarQube token
-                            withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
-                                // 执行sonar-scanner命令
-                                sh """
-                                sonar-scanner \
-                                  -Dsonar.projectKey=${JOB_NAME} \
-                                  -Dsonar.projectName='${env.IMAGE_NAMESPACE}' \
-                                  -Dsonar.projectVersion=${env.VERSION_TAG} \
-                                  -Dsonar.sources=. \
-                                  -Dsonar.exclusions='**/*_test.go,**/vendor/**' \
-                                  -Dsonar.language=go \
-                                  -Dsonar.host.url=http://${env.SONARQUBE_DOMAIN} \
-                                  -Dsonar.login=${SONAR_TOKEN} \
-                                  -Dsonar.projectBaseDir=${env.BUILD_DIRECTORY} 
-                                """
-                            }
-                            // 使用script块处理HTTP请求和JSON解析
-                            withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
-                                def authHeader = "Basic " + ("${SONAR_TOKEN}:".bytes.encodeBase64().toString())
-                                def response = httpRequest(
-                                    url: "http://${env.SONARQUBE_DOMAIN}/api/qualitygates/project_status?projectKey=${JOB_NAME}",
-                                    customHeaders: [[name: 'Authorization', value: authHeader]],
-                                    consoleLogResponseBody: true,
-                                    acceptType: 'APPLICATION_JSON',
-                                    contentType: 'APPLICATION_JSON'
-                                )
-                                def json = readJSON text: response.content
-                                if (json.projectStatus.status != 'OK') {
-                                    error "SonarQube quality gate failed: ${json.projectStatus.status}"
-                                } else {
-                                    echo "Quality gate passed successfully."
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        stage('node oss push') {
+    stages {
+        stage('Revert to Previous Version') {
             agent { kubernetes { inheritFrom 'nodeoss' } }
+            when {
+                expression {
+                    return params.REVERT_TO_PREVIOUS_VERSION
+                }
+            }
             steps {
-                // 从之前的阶段恢复存储的源代码
-                unstash 'source-code'
-                // 指定在特定容器中执行            
                 container('nodeoss') {
                     script {
-                        echo "Deploying to environment: ${env.DEPLOY_ENVIRONMENT}"
-                            // 使用 withCredentials 从 Jenkins 凭证存储中安全获取敏感信息
-                            withCredentials([string(credentialsId: 'access_key_id', variable: 'ACCESS_KEY_ID'),
-                                             string(credentialsId: 'access_key_secret', variable: 'ACCESS_KEY_SECRET')]) {
-                            def buildDir = env.BUILD_DIRECTORY
-                            sh "bash -c 'cd ${buildDir} && npm install && npm run build'"
-                            // 构建存储桶名称
-                            def bucketName = "${env.OSSBUCKET}-${env.DEPLOY_ENVIRONMENT}" 
-                            // 配置 ossutil 和检查存储桶是否存在，以及初始化静态页面、版本控制特性等
-                            sh "ossutil config -e ${env.OSSENDPOINT} -i ${ACCESS_KEY_ID} -k ${ACCESS_KEY_SECRET}"
-                            def bucketExists = sh(script: "ossutil ls oss://${bucketName} --endpoint ${env.OSSENDPOINT}", returnStatus: true)
-                            if (bucketExists != 0) {
-                                sh "ossutil mb oss://${bucketName} --acl public-read --storage-class Standard --redundancy-type ZRS --endpoint ${env.OSSENDPOINT}"
-                            script {
-                            def websiteConfig = httpRequest(
-                                url: 'https://raw.githubusercontent.com/Roliyal/CROLordSharedLlibraryCode/main/localhostnorouting.xml',
-                                outputFile: "localhostnorouting.xml"
-                            )
-                            sh "ossutil website --method put oss://${bucketName}  localhostnorouting.xml "
-                            sh "ossutil bucket-versioning --method put oss://${bucketName} enabled "
-                        }
-                            }
-                            // 上传 dist 目录到 OSS
-                            sh "cd ${buildDir} && ossutil cp -rf dist oss://${bucketName}/ --endpoint ${env.OSSENDPOINT}"
-                            echo "Deployment to OSS completed: ${bucketName}"
-                            // sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'"
-                        }
-                    }
-                }
-            }
-        }
-        
-        
-        //是否恢复，取决测试验证结果，如满足部署选择 NO，如验证版本 bug 需要恢复选择 Yes
-        stage('Revert to Previous Version') {
-            steps {
-                script {
-                    // 提示用户是否恢复到上一个版本
-                    def userInput = input message: 'Do you want to revert to the previous version?',
-                                         parameters: [choice(name: 'Revert', choices: 'No\nYes', description: 'Select Yes to revert, No to continue')]
-                    if (userInput == 'Yes') {
                         // 使用 withCredentials 从 Jenkins 凭证存储中安全获取敏感信息
                         withCredentials([string(credentialsId: 'access_key_id', variable: 'ACCESS_KEY_ID'),
                                          string(credentialsId: 'access_key_secret', variable: 'ACCESS_KEY_SECRET')]) {
                             def bucketName = "${env.OSSBUCKET}-${env.DEPLOY_ENVIRONMENT}"
                             sh "ossutil config -e ${env.OSSENDPOINT} -i ${ACCESS_KEY_ID} -k ${ACCESS_KEY_SECRET}"
                             // 恢复到上一个版本
-                            sh "ossutil revert-versioning  oss://${bucketName} -r "    
+                            sh "ossutil revert-versioning oss://${bucketName} -r"    
                             echo "Reverted to previous version on bucket: ${bucketName}"
                         }
-                    } else {
-                        echo "No revert action performed. Continuing with current deployment."
+                    }
+                }
+            }
+        }
+    stage('Refresh CDN') {
+        agent { kubernetes { inheritFrom 'nodeoss' } }
+            when {
+            expression {
+            return params.REVERT_TO_PREVIOUS_VERSION
+                }
+            }
+        steps {
+           // 指定在特定容器中执行            
+            container('nodeoss') {
+                script {
+                    echo "Refreshing CDN..."
+                        // 使用 withCredentials 从 Jenkins 凭证存储中安全获取敏感信息
+                    withCredentials([string(credentialsId: 'access_key_id', variable: 'ACCESS_KEY_ID'),
+                                     string(credentialsId: 'access_key_secret', variable: 'ACCESS_KEY_SECRET')]) {
+                    // 下载 cdn.go 文件
+                    def cdnGo = httpRequest(
+                    url: 'https://raw.githubusercontent.com/Roliyal/CROLordSharedLlibraryCode/main/cdn.go',
+                    outputFile: 'cdn.go'
+                                    )
+                                    echo "cdn.go downloaded: ${cdnGo.status}"
+                
+                                    // 下载 urls.txt 文件
+                                    def urlsTxt = httpRequest(
+                                        url: 'https://raw.githubusercontent.com/Roliyal/CROLordSharedLlibraryCode/main/urls.txt',
+                                        outputFile: 'urls.txt'
+                                    )
+                                    echo "urls.txt downloaded: ${urlsTxt.status}"
+                                    // 初始化 go module 并获取依赖
+                                    sh """
+                                    go mod init cdn-refresh
+                                    go get github.com/aliyun/alibaba-cloud-sdk-go/services/cdn
+                                    """
+                                    // 执行 go run cdn.go 命令
+                                    withEnv([
+                                        "ACCESS_KEY_ID=${ACCESS_KEY_ID}",
+                                        "ACCESS_KEY_SECRET=${ACCESS_KEY_SECRET}"
+                                    ]) {
+                                        sh '''
+                                        go run cdn.go -i ${ACCESS_KEY_ID} -k ${ACCESS_KEY_SECRET} -r urls.txt -t clear -o File
+                                        go run cdn.go -i ${ACCESS_KEY_ID} -k ${ACCESS_KEY_SECRET} -r urls.txt -t push -a domestic
+                                        '''
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }        
+
+        stage('Main Pipeline') {
+            when {
+                not {
+                    expression {
+                        return params.REVERT_TO_PREVIOUS_VERSION
+                    }
+                }
+            }
+            stages {
+                stage('Version') {
+                    steps {
+                        script {
+                            env.PATCH_VERSION = env.BUILD_NUMBER
+                            env.VERSION_NUMBER = "${env.MAJOR}.${env.MINOR}.${env.PATCH_VERSION}"
+                            echo "Current Version: ${env.VERSION_NUMBER}"
+                        }
+                    }
+                }
+
+                stage('Checkout') {
+                    steps {
+                        cleanWs() // 清理工作空间
+                        script {
+                            env.GIT_BRANCH = params.BRANCH
+                        }
+                        // 检出Git仓库
+                        checkout scm: [
+                            $class: 'GitSCM',
+                            branches: [[name: "*/${env.GIT_BRANCH}"]],
+                            userRemoteConfigs: [[url: params.GIT_REPOSITORY]],
+                            extensions: [[$class: 'CloneOption', depth: 1, noTags: false, reference: '', shallow: true]]
+                        ]
+                        echo '代码检出完成'
+                    }
+                }
+
+                stage('Check Directory') {
+                    steps {
+                        echo "Current working directory: ${pwd()}"
+                        sh 'ls -la'
+                        stash includes: '**', name: 'source-code' // 存储工作空间，包括Dockerfile和应用代码
+                    }
+                }
+
+                stage('SonarQube analysis') {
+                    agent { kubernetes { inheritFrom 'kanikoamd' } }
+                    steps {
+                        // 从之前的阶段恢复存储的源代码
+                        unstash 'source-code'
+                        // 指定在特定容器中执行
+                        container('kanikoamd') {
+                            // 设置SonarQube环境
+                            withSonarQubeEnv('sonar') {
+                                script {
+                                    // 使用withCredentials从Jenkins凭据中获取SonarQube token
+                                    withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
+                                        // 执行sonar-scanner命令
+                                        sh """
+                                        sonar-scanner \
+                                          -Dsonar.projectKey=${JOB_NAME} \
+                                          -Dsonar.projectName='${env.IMAGE_NAMESPACE}' \
+                                          -Dsonar.projectVersion=${env.VERSION_TAG} \
+                                          -Dsonar.sources=. \
+                                          -Dsonar.exclusions='**/*_test.go,**/vendor/**' \
+                                          -Dsonar.language=go \
+                                          -Dsonar.host.url=http://${env.SONARQUBE_DOMAIN} \
+                                          -Dsonar.login=${SONAR_TOKEN} \
+                                          -Dsonar.projectBaseDir=${env.BUILD_DIRECTORY} 
+                                        """
+                                    }
+                                    // 使用script块处理HTTP请求和JSON解析
+                                    withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
+                                        def authHeader = "Basic " + ("${SONAR_TOKEN}:".bytes.encodeBase64().toString())
+                                        def response = httpRequest(
+                                            url: "http://${env.SONARQUBE_DOMAIN}/api/qualitygates/project_status?projectKey=${JOB_NAME}",
+                                            customHeaders: [[name: 'Authorization', value: authHeader]],
+                                            consoleLogResponseBody: true,
+                                            acceptType: 'APPLICATION_JSON',
+                                            contentType: 'APPLICATION_JSON'
+                                        )
+                                        def json = readJSON text: response.content
+                                        if (json.projectStatus.status != 'OK') {
+                                            error "SonarQube quality gate failed: ${json.projectStatus.status}"
+                                        } else {
+                                            echo "Quality gate passed successfully."
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                stage('node oss push') {
+                    agent { kubernetes { inheritFrom 'nodeoss' } }
+                    steps {
+                        // 从之前的阶段恢复存储的源代码
+                        unstash 'source-code'
+                        // 指定在特定容器中执行            
+                        container('nodeoss') {
+                            script {
+                                echo "Deploying to environment: ${env.DEPLOY_ENVIRONMENT}"
+                                // 使用 withCredentials 从 Jenkins 凭证存储中安全获取敏感信息
+                                withCredentials([string(credentialsId: 'access_key_id', variable: 'ACCESS_KEY_ID'),
+                                                 string(credentialsId: 'access_key_secret', variable: 'ACCESS_KEY_SECRET')]) {
+                                    def buildDir = env.BUILD_DIRECTORY
+                                    sh "bash -c 'cd ${buildDir} && npm cache clean --force && npm install --loglevel verbose && npm run build'"
+                                    echo "Starting Trivy scan..."
+                                    try {
+                                        // 创建 Trivy 扫描脚本
+                                        writeFile file: 'trivy_scan.sh', text: """#!/bin/bash
+                                        echo "Running Trivy scan on directory: ${BUILD_DIRECTORY}"
+                                        trivy fs \
+                                                --vuln-type library \
+                                                --severity HIGH,CRITICAL \
+                                                --format json \
+                                                --output trivy_report.json \
+                                                --ignore-unfixed \
+                                                --no-progress \
+                                                --cache-backend fs \
+                                                ${env.BUILD_DIRECTORY}
+                                        """
+                                        // 赋予脚本执行权限
+                                        sh 'chmod +x trivy_scan.sh'
+                                        // 执行 Trivy 扫描脚本
+                                        sh './trivy_scan.sh'
+                                        // 打印扫描结果
+                                        echo "Trivy Scan Results:"
+                                        sh 'cat trivy_report.json'
+                                        // 解析和检查扫描结果
+                                        def report = readJSON file: 'trivy_report.json'
+                                        // 检查是否有严重漏洞或配置错误
+                                        def hasCriticalVulns = report.Results.any { it.Vulnerabilities?.any { v -> v.Severity == 'CRITICAL' } }
+                                        def hasHighVulns = report.Results.any { it.Vulnerabilities?.any { v -> v.Severity == 'HIGH' } }
+                                        def hasMisconfigErrors = report.Results.any { it.Misconfigurations?.any { m -> m.Severity in ['HIGH', 'CRITICAL'] } }
+                                        def hasSecrets = report.Results.any { it.Secrets?.any() }
+                                        if (hasCriticalVulns || hasHighVulns || hasMisconfigErrors || hasSecrets) {
+                                            error "Trivy scan found vulnerabilities or issues. Check trivy_report.json for details."
+                                        } else {
+                                            echo "No HIGH or CRITICAL vulnerabilities, misconfigurations, or secrets found."
+                                        }
+                                    } catch (Exception e) {
+                                        echo "Trivy scan failed: ${e}"
+                                    }
+                                    // 构建存储桶名称
+                                    def bucketName = "${env.OSSBUCKET}-${env.DEPLOY_ENVIRONMENT}" 
+                                    // 配置 ossutil 和检查存储桶是否存在，以及初始化静态页面、版本控制特性等
+                                    sh "ossutil config -e ${env.OSSENDPOINT} -i ${ACCESS_KEY_ID} -k ${ACCESS_KEY_SECRET}"
+                                    def bucketExists = sh(script: "ossutil ls oss://${bucketName} --endpoint ${env.OSSENDPOINT}", returnStatus: true)
+                                    if (bucketExists != 0) {
+                                        sh "ossutil mb oss://${bucketName} --acl public-read --storage-class Standard --redundancy-type ZRS --endpoint ${env.OSSENDPOINT}"
+                                        script {
+                                            def websiteConfig = httpRequest(
+                                                url: 'https://raw.githubusercontent.com/Roliyal/CROLordSharedLlibraryCode/main/localhostnorouting.xml',
+                                                outputFile: "localhostnorouting.xml"
+                                            )
+                                            sh "ossutil website --method put oss://${bucketName}  localhostnorouting.xml "
+                                            sh "ossutil bucket-versioning --method put oss://${bucketName} enabled "
+                                        }
+                                    }
+                                    // 上传 dist 目录到 OSS
+                                    sh "cd ${buildDir} && ossutil cp -rf dist oss://${bucketName}/ --endpoint ${env.OSSENDPOINT}"
+                                    echo "Deployment to OSS completed: ${bucketName}"
+                                    // sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'"
+                                }
+                            }
+                        }
+                    }
+                }
+
+                stage('Refresh CDN') {
+                    agent { kubernetes { inheritFrom 'nodeoss' } }
+                    steps {
+                        // 指定在特定容器中执行            
+                        container('nodeoss') {
+                            script {
+                                echo "Refreshing CDN..."
+                                // 使用 withCredentials 从 Jenkins 凭证存储中安全获取敏感信息
+                                withCredentials([string(credentialsId: 'access_key_id', variable: 'ACCESS_KEY_ID'),
+                                                 string(credentialsId: 'access_key_secret', variable: 'ACCESS_KEY_SECRET')]) {
+                                    // 下载 cdn.go 文件
+                                    def cdnGo = httpRequest(
+                                        url: 'https://raw.githubusercontent.com/Roliyal/CROLordSharedLlibraryCode/main/cdn.go',
+                                        outputFile: 'cdn.go'
+                                    )
+                                    echo "cdn.go downloaded: ${cdnGo.status}"
+                
+                                    // 下载 urls.txt 文件
+                                    def urlsTxt = httpRequest(
+                                        url: 'https://raw.githubusercontent.com/Roliyal/CROLordSharedLlibraryCode/main/urls.txt',
+                                        outputFile: 'urls.txt'
+                                    )
+                                    echo "urls.txt downloaded: ${urlsTxt.status}"
+                                    // 初始化 go module 并获取依赖
+                                    sh """
+                                    go mod init cdn-refresh
+                                    go get github.com/aliyun/alibaba-cloud-sdk-go/services/cdn
+                                    """
+                                    // 执行 go run cdn.go 命令
+                                    withEnv([
+                                        "ACCESS_KEY_ID=${ACCESS_KEY_ID}",
+                                        "ACCESS_KEY_SECRET=${ACCESS_KEY_SECRET}"
+                                    ]) {
+                                        sh '''
+                                        go run cdn.go -i ${ACCESS_KEY_ID} -k ${ACCESS_KEY_SECRET} -r urls.txt -t clear -o File
+                                        go run cdn.go -i ${ACCESS_KEY_ID} -k ${ACCESS_KEY_SECRET} -r urls.txt -t push -a domestic
+                                        '''
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
