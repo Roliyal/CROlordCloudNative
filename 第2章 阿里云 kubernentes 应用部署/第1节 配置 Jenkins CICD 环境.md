@@ -1237,7 +1237,7 @@ pipeline {
             }
         }
         
-        // 判断架构进行构建         
+        // 判断架构进行构建    PLATFORMS为'linux/amd64'时只构建'linux/amd64'，为'linux/arm64'时只构建'linux/arm64'，为'linux/amd64,linux/arm64'时并行构建'linux/amd64和linux/arm64'
         stage('Parallel Build') {
             when {
                 expression {
@@ -1331,7 +1331,7 @@ pipeline {
                 }
             }
             // 部署到 Kubernetes 集群
-            /*stage('Deploy to Kubernetes') {
+            stage('Deploy to Kubernetes') {
                 agent { kubernetes { inheritFrom 'kanikoamd' } } 
                 steps {
                     unstash 'source-code' // 恢复之前存储的代码
@@ -1353,7 +1353,7 @@ pipeline {
                         }
                     }
                 }
-        }*/
+        }
     
     }
 }
