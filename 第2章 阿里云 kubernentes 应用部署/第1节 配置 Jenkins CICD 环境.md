@@ -1103,14 +1103,14 @@ helm uninstall  -n cicd  sonarqube
 ```pipline
 pipeline {
     // 定义使用的 Jenkins agent 类型
-    agent { kubernetes { /* 配置省略 */ } }
+    agent any
     
     // 定义环境变量
     environment {
         GIT_BRANCH = 'main' // Git主分支的默认值
         MAJOR_VERSION = 'v1' // 主版本号
         MINOR_VERSION = '0'  // 次版本号
-        PLATFORMS = 'linux/amd64,linux/arm64' // 构建目标平台
+        //PLATFORMS = 'linux/amd64,linux/arm64' // 构建目标平台
         MAJOR = "${params.MAJOR_VERSION ?: env.MAJOR_VERSION ?: '1'}" // 主版本号，允许通过参数覆盖
         MINOR = "${params.MINOR_VERSION ?: env.MINOR_VERSION ?: '0'}" // 次版本号，允许通过参数覆盖
         PATCH = "${env.BUILD_NUMBER}" // 构建号，用作修订版本号
@@ -1119,6 +1119,7 @@ pipeline {
         IMAGE_NAMESPACE = "${params.IMAGE_NAMESPACE}" // 镜像命名空间
         IMAGE_ID = "${params.IMAGE_NAMESPACE}" // 镜像ID
         SONARQUBE_DOMAIN = "${params.SONARQUBE_DOMAINE}" // Sonarqube 域名配置
+        PLATFORMS = "${params.PLATFORMS}" //PLATFORMS使用用户选择的平台参数
     }
 
     // 触发条件
@@ -1126,17 +1127,17 @@ pipeline {
 
     // 参数定义
     parameters {
-        persistentString(name: 'BRANCH', defaultValue: 'main', description: 'Initial default branch: main')
-        persistentChoice(name: 'PLATFORMS', choices: ['linux/amd64', 'linux/amd64,linux/arm64'], description: 'Target platforms, initial value: linux/amd64,linux/arm64')
-        persistentString(name: 'GIT_REPOSITORY', defaultValue: 'https://github.com/Roliyal/CROlordCodelibrary.git', description: 'Git repository URL, default: https://github.com/Roliyal/CROlordCodelibrary.git')
-        persistentString(name: 'MAJOR_VERSION', defaultValue: '1', description: 'Major version number, default: 1')
-        persistentString(name: 'MINOR_VERSION', defaultValue: '0', description: 'Minor version number, default: 0')
-        persistentString(name: 'BUILD_DIRECTORY', defaultValue: 'Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/go-guess-number', description: 'Build directory path, default path: Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/go-guess-number')
-        persistentString(name: 'IMAGE_REGISTRY', defaultValue: 'crolord-registry-registry-vpc.cn-hongkong.cr.aliyuncs.com', description: 'Image registry address, default: crolord-registry-registry-vpc.cn-hongkong.cr.aliyuncs.com')
-        persistentString(name: 'IMAGE_NAMESPACE', defaultValue: 'febe', description: 'Image namespace, default: febe')
-        persistentString(name: 'SONARQUBE_DOMAINE', defaultValue: 'sonarqube.roliyal.com', description: 'SonarQube domain, default: sonarqube.roliyal.com')
-
+        string(name: 'BRANCH', defaultValue: 'main', description: 'Initial default branch: main')
+        choice(name: 'PLATFORMS', choices: ['linux/amd64', 'linux/arm64','linux/amd64,linux/arm64'], description: 'Target platforms, initial value: linux/amd64')
+        string(name: 'GIT_REPOSITORY', defaultValue: 'https://github.com/Roliyal/CROlordCodelibrary.git', description: 'Git repository URL, default: https://github.com/Roliyal/CROlordCodelibrary.git')
+        string(name: 'MAJOR_VERSION', defaultValue: '1', description: 'Major version number, default: 1')
+        string(name: 'MINOR_VERSION', defaultValue: '0', description: 'Minor version number, default: 0')
+        string(name: 'BUILD_DIRECTORY', defaultValue: 'Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/go-guess-number', description: 'Build directory path, default path: Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/go-guess-number')
+        string(name: 'IMAGE_REGISTRY', defaultValue: 'lxf-registry-vpc.cn-hongkong.cr.aliyuncs.com', description: 'Image registry address, default: crolord-registry-registry-vpc.cn-hongkong.cr.aliyuncs.com')
+        string(name: 'IMAGE_NAMESPACE', defaultValue: 'febe', description: 'Image namespace, default: febe')
+        string(name: 'SONARQUBE_DOMAINE', defaultValue: 'sonarqube.roliyal.com', description: 'SonarQube domain, default: sonarqube.roliyal.com')
     }
+
     
         // 构建流程定义
         stages {
@@ -1227,108 +1228,137 @@ pipeline {
                 }
             }
         }
-
-
-        // 并行构建阶段
-        stage('Parallel Build') {
-            parallel {
-                // 为 amd64 构建镜像
-                stage('Build for amd64') {
-                    agent { kubernetes { inheritFrom 'kanikoamd' } }
-                    steps {
-                        unstash 'source-code' // 恢复之前存储的代码
-                        container('kanikoamd') {
-                            sh """
-                                kaniko \
-                                  --context ${env.WORKSPACE}/${params.BUILD_DIRECTORY} \
-                                  --dockerfile ${params.BUILD_DIRECTORY}/Dockerfile \
-                                  --destination ${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${VERSION_TAG}-amd64 \
-                                  --cache=true \
-                                  --cache-repo=${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/cache \
-                                  --skip-tls-verify \
-                                  --skip-unused-stages=true \
-                                  --custom-platform=linux/amd64 \
-                                  --build-arg BUILDKIT_INLINE_CACHE=1 \
-                                  --snapshotMode=redo \
-                                  --log-format=text \
-                                  --verbosity=info
-                            """
-                        }
-                    }
-                }
-                // 为 arm64 构建镜像
-                stage('Build for arm64') {
-                    agent { kubernetes { inheritFrom 'kanikoarm' } }
-                    steps {
-                        unstash 'source-code'
-                        container('kanikoarm') {
-                            sh """
-                            /kaniko/executor \
-                              --context ${env.WORKSPACE}/${params.BUILD_DIRECTORY} \
-                              --dockerfile ${params.BUILD_DIRECTORY}/Dockerfile \
-                              --destination ${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${VERSION_TAG}-arm64 \
-                              --cache=true \
-                              --cache-repo=${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/cache \
-                              --skip-tls-verify \
-                              --skip-unused-stages=true \
-                              --custom-platform=linux/arm64 \
-                              --build-arg BUILDKIT_INLINE_CACHE=1 \
-                              --snapshotMode=redo \
-                              --log-format=text \
-                              --verbosity=info
-                            """
-                        }
-                    }
+               
+        stage('Print PLATFORMS') {
+            steps {
+                script {
+                    echo "Selected PLATFORMS: ${env.PLATFORMS}"
                 }
             }
         }
         
-        // 推送多架构镜像 Manifest-tools
-        stage('Push Multi-Arch Manifest') {
-            agent { kubernetes { inheritFrom 'kanikoamd' } }
-            steps {
-                container('kanikoamd') {
-                    script {
-                        sh "manifest-tool --version "
-                        // 创建并推送多架构镜像的manifest
-                        sh """
-                            manifest-tool --insecure push from-args \\
-                            --platforms '${env.PLATFORMS}' \\
-                            --template '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}-ARCHVARIANT' \\
-                            --target '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'
-                        """
-                        sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'"
-                    }
+        // 判断架构进行构建         
+        stage('Parallel Build') {
+            when {
+                expression {
+                env.PLATFORMS == 'linux/amd64' || env.PLATFORMS == 'linux/arm64' || env.PLATFORMS == 'linux/amd64,linux/arm64'
                 }
             }
-        }
-        // 部署到 Kubernetes 集群
-        stage('Deploy to Kubernetes') {
-            agent { kubernetes { inheritFrom 'kanikoamd' } } 
-            steps {
-                unstash 'source-code' // 恢复之前存储的代码
-                container('kanikoamd') {
-                    script {
-                        withCredentials([file(credentialsId: 'crolorduat', variable: 'KUBECONFIG')]) {
-                            // 执行 kubectl 命令
-                            sh "kaniko version" 
-                            sh "kubectl get node"
-                            env.FULL_IMAGE_URL = "${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}"
-                            
-                            sh """
-                            cd ${env.WORKSPACE}/${params.BUILD_DIRECTORY}
-                            cp *.yaml updated-deployment.yaml
-                            sed -i 's|image:.*|image: ${env.FULL_IMAGE_URL}|' updated-deployment.yaml
-                            kubectl apply -f updated-deployment.yaml
-                            """
+            parallel {
+                 //为 amd64 构建镜像
+                    stage('Build for amd64') {
+                        when {   // 当 PLATFORMS 为 linux/amd64 时进行构建
+                            expression { 
+                                def result = env.PLATFORMS == 'linux/amd64' || env.PLATFORMS == 'linux/amd64,linux/arm64'
+                                echo "Evaluation for 'linux/amd64': ${result}"
+                                return result
+                            }
+                        }
+                        agent { kubernetes { inheritFrom 'kanikoamd' } }
+                        steps {
+                            unstash 'source-code' // 恢复之前存储的代码
+                            container('kanikoamd') {
+                                sh """
+                                    kaniko \
+                                      --context ${env.WORKSPACE}/${params.BUILD_DIRECTORY} \
+                                      --dockerfile ${params.BUILD_DIRECTORY}/Dockerfile \
+                                      --destination ${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${VERSION_TAG}-amd64 \
+                                      --cache=true \
+                                      --cache-repo=${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/cache \
+                                      --skip-tls-verify \
+                                      --skip-unused-stages=true \
+                                      --custom-platform=linux/amd64 \
+                                      --build-arg BUILDKIT_INLINE_CACHE=1 \
+                                      --snapshot-mode=redo \
+                                      --log-format=text \
+                                      --verbosity=info
+                                """
+                            }
+                        }
+                    }
+                   // 为 arm64 构建镜像
+                    stage('Build for arm64') {
+                        //PLATFORMS 为 linux/arm64 时进行构建
+                        when {
+                            expression { 
+                                def result = env.PLATFORMS == 'linux/arm64' || env.PLATFORMS == 'linux/amd64,linux/arm64'
+                                echo "Evaluation for 'linux/arm64': ${result}"
+                                return result
+                            }
+                        }
+                        agent { kubernetes { inheritFrom 'kanikoarm' } }
+                        steps {
+                            unstash 'source-code'
+                            container('kanikoarm') {
+                                sh """
+                                /kaniko/executor \
+                                  --context ${env.WORKSPACE}/${params.BUILD_DIRECTORY} \
+                                  --dockerfile ${params.BUILD_DIRECTORY}/Dockerfile \
+                                  --destination ${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${VERSION_TAG}-arm64 \
+                                  --cache=true \
+                                  --cache-repo=${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/cache \
+                                  --skip-tls-verify \
+                                  --skip-unused-stages=true \
+                                  --custom-platform=linux/arm64 \
+                                  --build-arg BUILDKIT_INLINE_CACHE=1 \
+                                  --snapshotMode=redo \
+                                  --log-format=text \
+                                  --verbosity=info
+                                """
+                            }
                         }
                     }
                 }
             }
-        }
+            
+            // 推送多架构镜像 Manifest-tools
+            stage('Push Multi-Arch Manifest') {
+                agent { kubernetes { inheritFrom 'kanikoamd' } }
+                steps {
+                    container('kanikoamd') {
+                        script {
+                            sh "manifest-tool --version "
+                            // 创建并推送多架构镜像的manifest
+                            sh """
+                                manifest-tool --insecure push from-args \\
+                                --platforms '${env.PLATFORMS}' \\
+                                --template '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}-ARCHVARIANT' \\
+                                --target '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'
+                            """
+                            sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'"
+                        }
+                    }
+                }
+            }
+            // 部署到 Kubernetes 集群
+            /*stage('Deploy to Kubernetes') {
+                agent { kubernetes { inheritFrom 'kanikoamd' } } 
+                steps {
+                    unstash 'source-code' // 恢复之前存储的代码
+                    container('kanikoamd') {
+                        script {
+                            withCredentials([file(credentialsId: 'crolorduat', variable: 'KUBECONFIG')]) {
+                                // 执行 kubectl 命令
+                                sh "kaniko version" 
+                                sh "kubectl get node"
+                                env.FULL_IMAGE_URL = "${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}"
+                                
+                                sh """
+                                cd ${env.WORKSPACE}/${params.BUILD_DIRECTORY}
+                                cp *.yaml updated-deployment.yaml
+                                sed -i 's|image:.*|image: ${env.FULL_IMAGE_URL}|' updated-deployment.yaml
+                                kubectl apply -f updated-deployment.yaml
+                                """
+                            }
+                        }
+                    }
+                }
+        }*/
     
     }
 }
+
+
 
 ```
 ### OSS deploy pipeline 
