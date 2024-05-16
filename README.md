@@ -20,26 +20,27 @@
 - 第二章 阿里云ACK Kubernentes 应用部署
 
   - 2.0 &emsp;ACK 前言
-  - 2.1 &emsp;配置 ACK CI/CD 环境，优化配置ACK集群组件
-  - 2.2 &emsp;Monolithic application GO VUE项目前后分离部署 ACK 环境
-  - 2.3 &emsp;Micro services 微服务猜数字部署 ACK 环境
-  - 2.4 &emsp;Micro services JAVA微服务部署 ACK 环境
+  - 2.1 &emsp;第1节 配置 ACK CI/CD 环境，优化配置ACK集群组件
+  - 2.2 &emsp;第2节 Monolithic application GO VUE项目前后分离部署 ACK 环境
+  - 2.3 &emsp;第3节 Micro services 微服务猜数字部署 ACK 环境
+  - 2.4 &emsp;第4节 Micro services JAVA微服务部署 ACK 环境
+  - 2.5 &emsp;第5节 ACK 部署有状态应用场景
   - 2.5 &emsp;小结
 - 第三章 下一代部署 serverless(SAE) 应用构建
 
   - 3.0 &emsp;SAE 前言
-  - 3.1 &emsp;配置 SAE CI/CD 环境，优化配置SAE环境
-  - 3.2 &emsp;Monolithic application GO VUE项目前后分离部署 部署 SAE 环境
-  - 3.2 &emsp;Monolithic application GO VUE OSS CDN 前后端猜数字部署 SAE 环境
-  - 3.3 &emsp;Micro services JAVA微服务部署 SAE 环境
+  - 3.1 &emsp;第1节 配置 SAE CI/CD 环境，优化配置SAE环境
+  - 3.2 &emsp;第2节 Monolithic application GO VUE项目前后分离部署 部署 SAE 环境
+  - 3.2 &emsp;第3节 Monolithic application GO VUE OSS CDN 前后端猜数字部署 SAE 环境
+  - 3.3 &emsp;第4节 Micro services JAVA微服务部署 SAE 环境
   - 3.4 &emsp;小结
 - 第四章 微服务治理与实践
 
   - 4.0 &emsp;前言
-  - 4.1 &emsp;开源traefik网关到MSE云原生网关改造
-  - 4.2 &emsp;MSE云原生网关接口限流降级熔断配置
-  - 4.3 &emsp;MSE云原生网关java全链路灰度配置
-  - 4.4 &emsp;ASM网关多语言全链路灰度配置
+  - 4.1 &emsp;第1节 开源traefik网关到MSE云原生网关改造
+  - 4.2 &emsp;第2节 MSE云原生网关接口限流降级熔断配置
+  - 4.3 &emsp;第3节 MSE云原生网关java全链路灰度配置
+  - 4.4 &emsp;第4节 ASM网关多语言全链路灰度配置
   - 4.5 &emsp;小结
 - 第五章 可观测思考与实践
 
@@ -79,5 +80,5 @@ You are free to:
 ## 浅聊摸鱼之道
 
 <div style="display: flex; flex-direction: row;">
-    <img src="img/img.png" alt="Description 1" width="150" height="200" style="margin-right: 10px;">
+    <img src="resource/img.png" alt="Description 1" width="150" height="200" style="margin-right: 10px;">
 </div>
