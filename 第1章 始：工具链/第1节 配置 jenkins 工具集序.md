@@ -71,9 +71,9 @@
 您可以获取这个脚本并在本地执行。它良好的文档会让您在执行之前知道脚本都做了什么。
 
 ```shell
-$ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
-$ chmod 700 get_helm.sh
-$ ./get_helm.sh
+curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+chmod 700 get_helm.sh
+./get_helm.sh
 
 ```
 
