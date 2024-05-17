@@ -52,8 +52,7 @@ controller:
   image:
     registry: "docker.io"
     repository: "jenkins/jenkins"
-    tag: "2.457"
-    #tag: "2.444"
+    tag: "2.458"
     #tagLabel: jdk17
     pullPolicy: "Always"
   # JCasC - 用户登录密码用户名配置
@@ -216,7 +215,7 @@ controller:
       nginx.ingress.kubernetes.io/ssl-redirect: "true"
     ingressClassName: mse # 因使用 mse 云原生网关，ingressclass名需根据实际填写
     tls:
-      - secretName: "jenkins-tls"
+      - secretName: "jenkinstls"
         hosts:
           - "jenkins.roliyal.com"
 
@@ -309,7 +308,7 @@ agent:
         nodeSelector: "beta.kubernetes.io/arch=amd64" #lables取自阿里云kubernetes 容器服务节点标签 
         containers:
           - name: kanikoamd
-            image: docker.io/crolord/kanikomanifest-tool:v1.1.5 #镜像版本为AMD架构，其中封装 kaniko、 trivy 、Manifest-tools、 sonarqunbe 工具
+            image: docker.io/crolord/kanikomanifest-tool:v1.2.0 #镜像版本为AMD架构，其中封装 kaniko、 trivy 、Manifest-tools、 sonarqunbe 工具
             command: "sh -c"
             args: "cat"
             ttyEnabled: true
