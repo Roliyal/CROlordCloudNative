@@ -64,6 +64,32 @@
 
 #### 步骤一：部署 Helm
 
+- 初始化集群工具配置
+创建基础配置（需配置完成 kubectl 命令工具完成，可以参考官网 [安装和设置 kubectl](https://kubernetes.io/docs/tasks/tools/?spm=5176.2020520152.0.0.49fd16ddyp09xv) 可参考附加配置 Kubectl
+```shell
+
+# 下载kubectl二进制文件
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+
+# 下载kubectl校验和文件
+curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256"
+
+# 验证下载的kubectl文件
+echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
+
+# 将kubectl安装到系统路径
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+# 创建.kube目录并编辑config文件，配置集群凭证到计算机 $HOME/.kube/config 文件下。
+mkdir -p $(dirname $HOME/.kube/config) && vim $HOME/.kube/config
+
+#将文件的权限设置为只有拥有者可以读写，解决安全警告的问题。
+chmod 600 /root/.kube/config
+
+# 获取节点信息（可选，仅在kubectl配置正确时有效）
+kubectl get node
+
+```
 - 部署 Helm
 
 ·本文采用使用脚本安装
@@ -77,13 +103,13 @@ chmod 700 get_helm.sh
 
 ```
 
-如果想直接执行安装，运行以下命令
+（二选一）如果想直接执行安装，运行以下命令
 
 ```shell
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 ```
 
-安装结果,并执行更新helm repo仓库Chart 中 Jenkins信息。
+安装结果示意,并执行更新helm repo仓库Chart 中 Jenkins信息。
 
 ```
 $ curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3
@@ -130,31 +156,6 @@ jenkins https://charts.jenkins.io
 [root@issac ~]#
 ```
 
-2. 创建基础配置（需配置完成 kubectl 命令工具完成，可以参考官网 [安装和设置 kubectl](https://kubernetes.io/docs/tasks/tools/?spm=5176.2020520152.0.0.49fd16ddyp09xv) 可参考附加配置 Kubectl
-```shell
-
-# 下载kubectl二进制文件
-curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-
-# 下载kubectl校验和文件
-curl -LO "https://dl.k8s.io/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl.sha256"
-
-# 验证下载的kubectl文件
-echo "$(cat kubectl.sha256)  kubectl" | sha256sum --check
-
-# 将kubectl安装到系统路径
-sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
-
-# 创建.kube目录并编辑config文件，配置集群凭证到计算机 $HOME/.kube/config 文件下。
-mkdir -p $(dirname $HOME/.kube/config) && vim $HOME/.kube/config
-
-#将文件的权限设置为只有拥有者可以读写，解决安全警告的问题。
-chmod 600 /root/.kube/config
-
-# 获取节点信息（可选，仅在kubectl配置正确时有效）
-kubectl get node
-
-```
 2.1 创建 namespace 名称
 ```shell
 kubectl create ns cicd
