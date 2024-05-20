@@ -247,6 +247,26 @@ Login Succeeded
 [root@CROLord opt]#kubectl  create secret generic kaniko-secret --from-file=/root/.docker/config.json -n cicd 
 secret/kaniko-secret created
 ```
+###### 提示
+- 使用 podman 模拟 Docker CLI 的时候，它的配置文件位置可能与传统的 Docker 不同。要找到 config.json 文件，可以使用以下步骤：
+
+- 检查 podman 配置文件路径
+- podman 的配置文件可能存储在不同的位置，通常是用户的主目录下。以下是常见的路径：
+```shell
+[root@CROLord ~]# find / -name auth.json 2>/dev/null
+/run/containers/0/auth.json
+[root@CROLord ~]# cat /run/containers/0/auth.json
+{
+        "auths": {
+                "crolord*******ng.cr.aliyuncs.com": {
+                        "auth": "Z**********rKktwcDIz"
+                }
+        }
+}[root@CROLord ~]#kubectl  create secret generic kaniko-secret --from-file=/run/containers/0/auth.json -n cicd 
+secret/kaniko-secret created
+[root@CROLord ~]# 
+```
+
 
 ###### 配置示例，用于初始化创建 secret ，此示例为 Jenkins credentials 全局凭据信息，相关信息根据实际情况配置
 ```shell
