@@ -174,7 +174,7 @@ kubectl create secret generic jenkins-admin-secret \
   --from-literal=jenkins-admin-password= 用于登录 jenkins 密码 \
   -n cicd
 ```
-2.4 创建持久卷
+2.4 创建 jenkins 持久卷
 ```shell
 kubectl apply -f - <<EOF
 apiVersion: v1
@@ -191,7 +191,7 @@ spec:
   storageClassName: alicloud-disk-ssd
 EOF
 ```
-示例配置
+创建 namespace 、
 ```shell
 
 [root@CROLord]# kubectl create ns cicd
@@ -279,7 +279,7 @@ kubectl create secret generic secret-credentials -n cicd \
 ```
 - `k8s-prod-config` 和 `k8s-uat-config` 参数用于添加生产环境和测试环境的 Kubernetes config配置文件。
 - `github-token` 参数添加一个认证 GitHub 令牌文件。
-- `acr-username` 和 `acr-password` 用于添加经过 Base64 编码的阿里云容器注册服务(ACR)的登录凭证。请确保根据实际情况替换这些值。
+- `acr-username` 和 `acr-password` 用于添加经过 Base64 编码的阿里云容器注册服务(ACR)的登录凭证。请确保根据实际情况替换这些值，此变量仅在配置使用 docker 构建生效。
 
 
 Base64 编码是一种将二进制数据转换成纯文本格式的编码方法。要生成 Base64 编码的字符串，你可以使用命令行工具或在线服务。对于命令行，如在 Linux 或 macOS 上，可以使用 base64 命令。例如，要对 "your_text" 进行编码，可以使用以下命令：
@@ -290,7 +290,7 @@ echo -n 'your_text' | base64
 这里，echo -n 确保不在输出中包含新行字符，base64 命令将输入的文本转换成 Base64 编码。对于 Windows，可以使用 PowerShell 的 ConvertTo-Base64 命令。
 
 
-###### 补充 ACR 容器镜像服务安全扫描全局凭据，以下数据通过 "echo -n 'your_access_key_id' | base64 生成，需要根据实际字段改变
+###### 说明补充 ACR 容器镜像服务安全扫描全局凭据，以下数据通过 "echo -n 'your_access_key_id' | base64 生成，需要根据实际字段改变
 ```shell
 kubectl patch secret secret-credentials -n cicd --patch='
  data:
@@ -348,9 +348,7 @@ controller:
    image:
       registry: "docker.io"
       repository: "jenkins/jenkins"
-      tag: "2.451"
-      #tag: "2.444"
-      #tagLabel: jdk17
+      tag: "2.459"
       pullPolicy: "Always"
    # JCasC - 用户登录密码用户名配置
    #adminSecret: true
@@ -364,6 +362,7 @@ controller:
    javaOpts: "-Duser.timezone=Asia/Shanghai -Dorg.jenkinsci.plugins.durabletask.BourneShellScript.USE_BINARY_WRAPPER=true"
    #配置插件
    installPlugins:
+      - persistent-parameter:1.3
       - workflow-multibranch:783.va_6eb_ef636fb_d
       - kubernetes:4203.v1dd44f5b_1cf9
       - workflow-aggregator:latest
@@ -380,8 +379,12 @@ controller:
       - dingding-notifications:2.7.3
       - docker-workflow:572.v950f58993843
       - kubernetes-credentials-provider:1.262.v2670ef7ea_0c5
-      - github-branch-source:1785.v99802b_69816c
+      - github-branch-source:1787.v8b_8cd49a_f8f1
       - build-name-setter:2.4.2
+      - build-environment:1.7
+      - sonar:2.17.2
+      - pipeline-utility-steps:2.16.2
+      - http_request:1.18
    existingSecret: "secret-credentials"
    additionalExistingSecrets:
       - name: secret-credentials
@@ -691,6 +694,280 @@ helm -n cicd install    jenkins jenkins/jenkins -f /opt/tls/jenkins-values.yaml
 ```
 
 正常访问上述配置域名地址查看是否符合预期
+
+#####  Helm SonarQube 部署
+1. 添加Helm仓库
+- 首先，需要将存放SonarQube Helm图表的仓库添加到Helm中。可以使用下面的命令添加官方的SonarQube Helm仓库：
+
+```bash
+helm repo add sonarqube https://SonarSource.github.io/helm-chart-sonarqube
+helm repo update
+```
+
+2. 安装SonarQube
+- 接下来，使用Helm安装SonarQube。你可以直接安装，也可以先下载values.yaml文件进行修改，然后再安装。先简单安装看看：
+
+```shell
+helm install sonarqube sonarqube/sonarqube --version <chart_version> --namespace <your_namespace> --create-namespace
+
+```
++ 将<chart_version>替换为你想安装的版本号，将<your_namespace>替换为你想在其上安装SonarQube的Kubernetes命名空间。
+
+3. 修改Values
+   Helm图表的安装和配置可以通过修改values.yaml文件来定制。你可以从图表仓库中下载默认的values.yaml文件，进行修改：
+
+```shell
+helm show values sonarqube/sonarqube > values.yaml
+```
+这会将当前图表的默认配置输出到values.yaml文件中。然后，你可以使用任何文本编辑器打开这个文件，并根据需要修改配置。比如，你可能想要修改以下一些配置：
+```yaml
+# Default values for sonarqube.
+deploymentType: "StatefulSet"
+replicaCount: 1
+revisionHistoryLimit: 10
+deploymentStrategy: {}
+OpenShift:
+  enabled: false
+  createSCC: true
+edition: "community"
+image:
+  repository: sonarqube
+  tag: 10.4.1-{{ .Values.edition }}
+  pullPolicy: IfNotPresent
+securityContext:
+  fsGroup: 0
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 0
+  seccompProfile:
+    type: RuntimeDefault
+  capabilities:
+    drop: ["ALL"]
+elasticsearch:
+  configureNode: false
+  bootstrapChecks: true
+service:
+  type: ClusterIP
+  externalPort: 9000
+  internalPort: 9000
+  labels:
+  annotations: {}
+networkPolicy:
+  enabled: false
+  prometheusNamespace: "monitoring"
+sonarWebContext: ""
+nginx:
+  enabled: false
+ingress:
+  enabled: true
+  apiVersion: "networking.k8s.io/v1"
+  hosts:
+    - name: sonarqube.roliyal.com
+      path: /
+      servicePort: 9000
+      pathType: ImplementationSpecific
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+  ingressClassName: mse
+  tls: []
+  # - secretName: chart-example-tls
+  #   hosts:
+  #     - chart-example.local
+route:
+  enabled: false
+  host: ""
+  tls:
+    termination: edge
+  annotations: {}
+affinity: {}
+tolerations: []
+nodeSelector: {}
+hostAliases: []
+readinessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 6
+  timeoutSeconds: 1
+livenessProbe:
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 6
+  timeoutSeconds: 1
+startupProbe:
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  failureThreshold: 24
+  timeoutSeconds: 1
+initContainers:
+  securityContext:
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 0
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop: ["ALL"]
+  resources: {}
+extraInitContainers: {}
+extraContainers: []
+caCerts:
+  enabled: false
+  image: adoptopenjdk/openjdk11:alpine
+  secret: your-secret
+initSysctl:
+  enabled: true
+  vmMaxMapCount: 524288
+  fsFileMax: 131072
+  nofile: 131072
+  nproc: 8192
+  securityContext:
+    privileged: true
+    runAsUser: 0
+initFs:
+  enabled: true
+  securityContext:
+    privileged: false
+    runAsNonRoot: false
+    runAsUser: 0
+    runAsGroup: 0
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop: ["ALL"]
+      add: ["CHOWN"]
+prometheusExporter:
+  enabled: false
+  version: "0.17.2"
+  noCheckCertificate: false
+  webBeanPort: 8000
+  ceBeanPort: 8001
+  config:
+    rules:
+      - pattern: ".*"
+prometheusMonitoring:
+  podMonitor:
+    enabled: false
+    namespace: "default"
+    interval: 30s
+plugins:
+  install: []
+  noCheckCertificate: false
+jvmOpts: ""
+jvmCeOpts: ""
+monitoringPasscode: "define_it"
+annotations: {}
+resources:
+  limits:
+    cpu: 800m
+    memory: 4Gi
+  requests:
+    cpu: 400m
+    memory: 2Gi
+persistence:
+  enabled: true
+  annotations: {}
+  storageClass: "alicloud-disk-topology-alltype"
+  accessMode: ReadWriteOnce
+  size: 50Gi
+  uid: 1000
+  guid: 0
+  volumes: []
+  mounts: []
+emptyDir: {}
+jdbcOverwrite:
+  enable: false
+  jdbcUrl: "jdbc:postgresql://myPostgress/myDatabase?socketTimeout=1500"
+  jdbcUsername: "sonarUser"
+  jdbcPassword: "sonarPass"
+postgresql:
+  enabled: true
+  postgresqlUsername: "sonarUser"
+  postgresqlPassword: "sonarPass"
+  postgresqlDatabase: "sonarDB"
+  service:
+    port: 5432
+  resources:
+    limits:
+      cpu: 2
+      memory: 2Gi
+    requests:
+      cpu: 100m
+      memory: 200Mi
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    size: 40Gi
+    storageClass: "alicloud-disk-topology-alltype"
+  securityContext:
+    enabled: true
+    fsGroup: 1001
+  containerSecurityContext:
+    enabled: true
+    runAsUser: 1001
+    allowPrivilegeEscalation: false
+    runAsNonRoot: true
+    seccompProfile:
+      type: RuntimeDefault
+    capabilities:
+      drop: ["ALL"]
+  volumePermissions:
+    enabled: false
+    securityContext:
+      runAsUser: 0
+  shmVolume:
+    chmod:
+      enabled: false
+  serviceAccount:
+    enabled: false
+podLabels: {}
+sonarqubeFolder: /opt/sonarqube
+tests:
+  image: ""
+  enabled: true
+  resources: {}
+serviceAccount:
+  create: false
+  annotations: {}
+extraConfig:
+  secrets: []
+  configmaps: []
+terminationGracePeriodSeconds: 60
+```
+- 持久化存储选择阿里云 storageClass 存储类，
+- SonarQube版本 选择10.4.1
+- 插件安装
+- 资源限制（CPU、内存）
+- 服务类型（比如，使用 clusterIP 以 mse ingress 访问）
+4. 使用自定义Values文件安装SonarQube
+- 修改values.yaml文件后，使用以下命令，通过自定义的values.yaml文件安装SonarQube：
+```shell
+helm upgrade --install -n cicd --version '~8' sonarqube sonarqube/sonarqube -f values.yaml
+```
+- 确保将<-n cicd >替换为实际的命名空间。
+5. 访问SonarQube
+   - 安装完成后，你可能需要执行一些额外的步骤来访问SonarQube界面，使用 MSE 查看SonarQube的IP地址，需要MSE控制台登录查看，并做域名映射。
+```shell
+[root@CROLord ~]#helm upgrade --install -n cicd --version '~8' sonarqube sonarqube/sonarqube -f values.yaml
+NAMESPACE: cicd
+STATUS: deployed
+REVISION: 1
+NOTES:
+1. Get the application URL by running these commands:
+  http://sonarqube.roliyal.com
+[root@CROLord ~]# 
+```
+- 然后，使用返回的 http://sonarqube.roliyal.com 在浏览器中访问SonarQube。
+
+6. 清理
+   - 如果需要，你可以通过以下命令删除SonarQube实例：
+```shell
+helm uninstall  -n cicd  sonarqube
+```
+
+
 
 ##### 方案二基于 ECS 服务器构建 docker-compose-Jenkins
 
