@@ -64,20 +64,13 @@ tar -zxvf prometheus-25.21.0.tgz
 修改`vim prometheus/values.yaml`文件：
 
 ```bash
-.
-.
-.
- 251   remoteWrite:
- 252   - url: http://prometheus-server.monitoring.svc.cluster.local/api/v1/write  # 暴露远程写入API
- .
- .
- .
- 278   extraArgs:
- 279     web.enable-remote-write-receiver: null   #开启远程写入功能
- .
- .
- .
-
+...
+    remoteWrite:
+   - url: http://prometheus-server.monitoring.svc.cluster.local/api/v1/write  # 暴露远程写入API
+... 
+   extraArgs:
+     web.enable-remote-write-receiver: null   #开启远程写入功能
+...
 ```
 ### 3.3.2 安装
 

@@ -486,29 +486,103 @@ RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 ## 如何对接 容器服务 Kubernetes 版 ACK 的最佳实践
 1. 创建 容器服务 Kubernetes 版 ACK 选型
    1. **如何选择集群版本**
-       - **最新稳定版本**：选择阿里云推荐的最新稳定版本，以确保获得最新的功能和安全更新。
-       - **长期支持版本（LTS）**：如果需要更长的支持周期，可以选择长期支持版本，保证系统的稳定性和持续更新。
-       - **兼容性需求**：根据现有应用和插件的需求，选择与之兼容的 Kubernetes 版本。
+       - **识别版本号**：
+         - 阿里云 ACK Kubernetes 版本号采用 x.y.z-aliyun.n 格式：
+            x：主要版本（major version）
+            y：次要版本（minor version）
+            z：补丁版本（patch version）
+            n：阿里云补丁版本（ACK patch version）
+            例如，版本号 1.28.3-aliyun.1 表示基于 Kubernetes 1.28.3 版本的第一个阿里云补丁版本。[Kubernetes版本概览及机制](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/support-for-kubernetes-versions)
+            关于 Kubernetes 版本号的详细说明，请参见 [Kubernetes Release Versioning.](https://github.com/kubernetes/sig-release/blob/master/release-engineering/versioning.md#kubernetes-release-versioning)
+       - **低版本和高版本举例说明**：
+         - 在 Kubernetes 的版本中，每个主要和次要版本更新都会引入新的特性、改进现有功能、修复漏洞以及可能的 API 变更,建议您在选择集群版本充分阅读官网文档帮助信息，尤其每个版本中 API 的变更情况，充分考虑后选择集群版本。
+         Kubernetes 1.24 版本相较于 1.22 版本的主要改进点包括：
+         1.  移除了 Dockershim，需要用户迁移到其他容器(Containerd、安全沙箱)运行时。
+         2.  Server-Side Apply (SSA) 达到 GA 提供了更好的资源管理方式。
+         3.  PodSecurity Admission 插件替代了 PodSecurityPolicy（PSP），提供了更简洁的安全管理。
+         4.  改进了状态同步和健康检查机制。
+         Kubernetes 1.22 版本的特点则主要体现在： 
+         1.  移除了许多旧的 API 版本，需要用户升级到新的 API。
+         2.  增强了安全功能和可观察性，提供了更多的监控和诊断工具。
+         3.  优先级和抢占（Priority and Preemption）功能达到 GA，提高了资源调度的灵活性。
+         4.  选择合适的版本应根据项目需求、兼容性要求以及特性偏好来决定。 
+       - **官网文档帮助信息**：
+         Kubernetes 版本发布页面：
+         这个页面列出了每个版本的详细发布说明，包括新特性、改进、修复以及变更内容。
+         [Kubernetes Release Notes](https://kubernetes.io/releases) 
+      
+         Kubernetes 版本生命周期：
+         这个页面提供了各个版本的支持状态，包括何时发布、支持期限等信息。
+         [Kubernetes Version Skew Policy](https://kubernetes.io/releases/version-skew-policy/)
+      
+         Kubernetes API 变更：
+         这个页面列出了每个版本中 API 的变更情况，包括新增的 API、弃用的 API 以及移除的 API。
+         [Kubernetes API Changes](https://kubernetes.io/docs/reference/using-api/deprecation-guide/)
 
-   2. **网段规划策略**
-       - **VPC网段**：选择一个与现有网络结构不冲突的VPC网段，并确保有足够的地址空间以支持未来的扩展需求。
-       - **Pod网段**：根据集群规模和扩展需求，规划足够大的Pod网段。对于中小规模集群，建议选择/16或/17的网段。
-       - **Service网段**：规划Service网段时，确保其不与VPC内的其他子网冲突。建议选择/20或/21的网段。
+         Kubernetes 官方文档：
+         这个页面提供了 Kubernetes 的完整文档，包括安装、配置、操作以及各个特性的详细说明。
+         [Kubernetes Documentation](https://kubernetes.io/docs/home/)
+
+   2. **单集群 VPC 网段规划策略**
+       - **VPC网段以及交换机网关规划**：
+            - **核心要求**：选择一个与现有网络结构不冲突的VPC网段，并确保有足够的地址空间以支持未来的扩展需求。
+            - **选择原则**：规划VPC网段时，建议选择子网掩码不超过 `/16` 的网段。交换机子网掩码应在 `/17` 到 `/29` 之间，子网掩码越小，可用的IP地址数量越多。
+            - 示例：例如，如果现有 VPC 网络使用 `10.0.0.0/12`，可以选择 `192.168.0.0/16` 作为新的VPC网段。
+            - 没有多地域部署系统的要求且各系统之间也不需要通过VPC进行隔离，那么推荐使用一个VPC
+            - 有多地域部署系统的需求时，必须使用多个VPC。可以通过使用VPC对等连接、VPN网关、云企业网等产品实现跨地域VPC间互通。
+            **参考**[VPC网络规格](https://help.aliyun.com/zh/vpc/getting-started/network-planning)
+
+   2. **多集群 VPC 网段规划策略**
+       - **多集群 VPC网段以及交换机网关规划**：
+           - **核心要求**：
+               - 1. 多VPC情况，VPC地址段不重叠，VPC间通过CEN互联。
+               - 2. 多集群Pod地址段不重叠。
+               - 3. 多集群Pod地址段和Service地址段不能重叠。
+           - **示例**：
+             - **集群1**：
+                 - VPC网段：`10.0.0.0/16`
+                 - Pod网段：`10.1.0.0/16`
+                 - Service网段：`10.96.0.0/20`
+             - **集群2**：
+                 - VPC网段：`10.2.0.0/16`
+                 - Pod网段：`10.3.0.0/16`
+                 - Service网段：`10.97.0.0/20`
+           **参考**[多集群VPC网络规格](https://help.aliyun.com/zh/ack/distributed-cloud-container-platform-for-kubernetes)
+           **IDC集群与云上互通场景** 当与IDC集群整合时，确保IDC网络与Kubernetes集群的VPC、Pod网段和Service网段不重叠。参考说明[分布式云容器平台ACK one 概述](https://help.aliyun.com/zh/ack/distributed-cloud-container-platform-for-kubernetes/product-overview/ack-one-overview)
 
    3. **网络插件选择指南**
-       - **Terway**：阿里云提供的高级网络插件，支持多种网络模式和高级功能，如多ENI和IPv6。
-       - **Flannel**：简单易用的网络插件，适用于中小规模集群，具有较好的兼容性。
-       - **Calico**：功能强大的网络插件，支持网络策略和高性能需求，适用于需要更细粒度控制和安全性的集群。
+      1. Terway 与 Flannel 对比，参考地址 [Terway与Flannel对比](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/work-with-terway#section-wiw-s2f-tiw) |
+      2. Pod 数量详解
+            - Terway 计算逻辑,以`ecs.g8a.large` 举例说明，ENI弹性网卡数量:3，单网卡私有IPv4地址数:6，单网卡IPv6地址数:6
+              1. 共享ENI多IP模式计算公式=（ECS支持的弹性网卡数-1）×单个ENI支持的私有IP数（EniQuantity-1）×EniPrivateIpAddressQuantity 
+                * 计算公式: (3 - 1) × 6 =12 ,故 Terway兼容性可以支持 Pod 最大数量为 12 Pod
+              2. 共享ENI多IP模式+Trunk ENI= （ECS支持的弹性网卡数-1）×单个ENI支持的私有IP数（EniQuantity-1）×EniPrivateIpAddressQuantity
+                * 计算公式:(3 - 1) × 6 + 1 =13 ,故 Terway兼容性可以支持 Pod 最大数量为 13 Pod
+              3. 独占ENI模式= ECS支持的弹性网卡数-1 EniQuantity-1
+                * 计算公式:(3 -1) -1 =1 ,故 Terway兼容性可以支持 Pod 最大数量为 1 Pod
+            - Flannel 计算逻辑
+              1. 创建集群选择节点POD数量，最大可单节点 256 Pod，
+                * 当前 Pod 网络 CIDR 配置下，每台主机最多容纳 256 个 Pod 时，集群内最多可允许部署 256 台主机。**创建成功后不能修改**
+      3. Terway DataPath V2模式与NetworkPolicy网络策略模式
+            - 使用参考建议[Terway网络插件使用场景](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/work-with-terway#a3fb749478lsw)
 
    4. **SNAT 配置决策**
-       - **开启SNAT**：适用于需要访问外部互联网资源的集群，阿里云会自动为集群配置SNAT规则，使得集群内的Pod可以访问外部网络。
-       - **关闭SNAT**：适用于不需要访问外部互联网的集群，或者已经有自定义的NAT网关配置。在这种情况下，需要手动配置NAT规则以满足特定需求。
+       - **开启SNAT**：阿里云会自动为集群配置SNAT规则，使得集群内的Pod可以访问外部网络。
+            1. 适用场景如集群内部需要访问公网资源，拉取公网镜像，访问三方接口等场景
+            2. 黑白名单场景，如何找寻SNAT地址？
+               - 容器服务 ACK > 集群名称/ID > 需要操作的集群id > 集群信息 > 集群资源 >虚拟专有网络 VPC >vpc-****,选中后跳转 > 资源管理 > 公网NAT网关 > 查看弹性公网IP
+地址，如图所示：
+            ![net.png](resource/net.png)
+       - **关闭SNAT**：已经有自定义的NAT网关配置。在这种情况下，需要手动配置NAT规则以满足特定需求。
+           1. 关闭后如果需要手动开启则参考如下文档[为已有集群开启公网访问能力](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/enable-an-existing-ack-cluster-to-access-the-internet)
 
    5. **Ingress 控制器选择**
-       - **ALB Ingress**：阿里云提供的应用负载均衡Ingress，适用于需要高性能、自动扩展和高级流量管理功能的应用。
-       - **Nginx Ingress**：开源社区支持的Nginx Ingress，适用于中小规模的集群，具有灵活的配置和广泛的社区支持。
-       - **MSE Ingress**：阿里云微服务引擎提供的Ingress，适用于微服务架构，支持流量灰度发布和熔断限流等高级功能。
-通过这些优化的步骤和注意事项，可以帮助您根据具体需求和环境选择合适的ACK配置，确保集群在功能、性能和安全性方面达到最佳效果。
+       - **[Nginx Ingress、ALB Ingress和MSE Ingress对比](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/comparison-among-nginx-ingresses-alb-ingresses-and-mse-ingresses-1)**
+       - **ALB Ingress**：基于阿里云应用型负载均衡ALB（Application Load Balancer），属于全托管免运维的云服务。单个ALB实例支持100万QPS，提供更强大的Ingress流量管理功能，适用于需要高性能、自动扩展和高级流量管理功能的应用。
+       - **Nginx Ingress**：需要您自行运维，如果您对网关定制有强烈的需求，可以选择Nginx Ingress，开源社区支持的Nginx Ingress，适用于中小规模的集群，具有灵活的配置和广泛的社区支持。
+       - **MSE Ingress**：基于阿里云MSE（Microservices Engine）云原生网关，属于全托管免运维的云服务。单个MSE云原生网关实例支持100万QPS，提供更为强大的Ingress流量管理功能，将传统流量网关、微服务网关和安全网关三合一，通过硬件加速、WAF本地防护和插件市场等功能，构建一个高集成、高性能、易扩展、热更新的云原生网关，支持流量灰度发布和熔断限流等高级功能。
+      
+- **本文将以阿里云MSE云原生网关完成整个实践部署，通过这些优化的步骤和注意事项，可以帮助您根据具体需求和环境选择合适的ACK配置，确保集群在功能、性能和安全性方面达到最佳效果。**
 
 2. 初始化 ACK 集群配置
 
