@@ -18,7 +18,7 @@ Demo地址：[前后端分离demo项目VUE 前端](https://github.com/Roliyal/CR
 拉取完成后进入vue-go-guess-number目录，进行前端项目容器镜像打包：
 ~~~shell
 docker build -t vue-nginx:v1 .
-docker images
+docker resource
 ~~~
 执行结果如下：（如build失败，可通过查看build日志排查调整Dockerfile解决）  
 ~~~
@@ -176,7 +176,7 @@ spec:
 ~~~
 配置域名解析后，通过域名测试访问：  
 
-![img.png](images/vue-web.png)
+![img.png](resource/vue-web.png)
 
 #### 3.后端应用部署
 3.1，拉取git仓库前端应用代码并构建镜像
@@ -186,7 +186,7 @@ Demo地址：[前后端分离demo项目Go 后端](https://github.com/Roliyal/CRO
 拉取完成后进入go-guess-number目录，进行前端项目容器镜像打包：
 ~~~shell
 docker build -t go-guess:v1 .
-docker images
+docker resource
 ~~~
 执行结果如下：（如build失败，可通过查看build日志排查调整Dockerfile解决）
 
@@ -308,5 +308,5 @@ spec:
 
 ~~~
 3.4， 测试后端访问
-![img_1.png](images/猜数字.png)
+![img_1.png](resource/猜数字.png)
 进行猜数字游戏吧。

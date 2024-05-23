@@ -93,7 +93,7 @@ CMD ["/bin/bash"]
 
 ```shell
 docker build . 
-docker tag {images ID} {repo}/tag
+docker tag {resource ID} {repo}/tag
 docker push {repo}/tag
 ```
 
@@ -104,7 +104,7 @@ docker push {repo}/tag
   预期效果
   <div align="center"> 
 
-  ![img.png](images/img.png) 
+  ![img.png](resource/img.png) 
   </div>
 
 提示镜像修复依赖于包的发布者提供新的修复版本，如果包的发布者没有修复这个漏洞那么就无法修复。
@@ -127,7 +127,7 @@ docker push {repo}/tag
 需要注意的是，Trivy 和云安全都只是容器镜像安全扫描的一种工具，不能完全保证镜像的安全。使用这些工具时，还需要注意镜像来源、使用最新的基础镜像、定期更新、使用最小化的镜像等安全最佳实践。
 2. 镜像访问控制
 3. 配置企业级 VPC 访问控制
-![img_1.png](images/img_1.png)
+![img_1.png](resource/img_1.png)
 
 上图示例中，显示为内网ACR VPC地址（crolord-registry-vpc.cn-hongkong.cr.aliyuncs.com）配置并将VPC内域名将解析至此IP。
 
@@ -145,7 +145,7 @@ ACR企业高级版支持最多可以添加7条专有网络，此功能有助于�
    容器签名功能需要非对称密钥算法的支持，创建KMS密钥时，密钥类型需选择RSA，密钥用途需选择SIGN或VERIFY。
   <div align="center"> 
 
-![KMS.png](images/KMS.png)
+![KMS.png](resource/KMS.png)
   </div>
 
 #### 授权容器镜像服务使用KMS密钥
@@ -159,7 +159,7 @@ ACR企业高级版支持最多可以添加7条专有网络，此功能有助于�
 - 修改该角色的信任策略，确保该角色具有所需的权限。
   <div align="center"> 
 
-  ![img_2.png](images/img_2.png)
+  ![img_2.png](resource/img_2.png)
   </div>
 #### 配置证明者及验签策略
 
@@ -168,10 +168,10 @@ ACR企业高级版支持最多可以添加7条专有网络，此功能有助于�
 - 在加签规则配置向导中选择证明者关联KMS密钥并设置加签规则，包括加签算法、加签范围和触发方式。
   <div align="center"> 
  
-![img_3.png](images/img_3.png)
+![img_3.png](resource/img_3.png)
 </div>
   以及最终效果。接下来章节中，我们将带入整个部署生产环境中。
   <div align="center"> 
 
-  ![img_4.png](images/img_4.png)
+  ![img_4.png](resource/img_4.png)
 <div>
