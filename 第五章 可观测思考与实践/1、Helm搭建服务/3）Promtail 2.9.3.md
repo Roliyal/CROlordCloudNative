@@ -142,6 +142,9 @@ tracing:
 ```
 总结：
 1、Loki服务端URL，我这里的是http://loki-distributed-gateway/loki/api/v1/push，需要修改成自己的，loki分布式安装地址：[https://dongweizhen.blog.csdn.net/article/details/138799616](https://dongweizhen.blog.csdn.net/article/details/138799616)
+
 2、多行匹配详情可以参考：[https://dongweizhen.blog.csdn.net/article/details/135284386](https://dongweizhen.blog.csdn.net/article/details/135284386)
+
 3、日志匹配相关可以参考：[https://blog.ossq.cn/2674.html](https://blog.ossq.cn/2674.html)
+
 ⚠4、这里只加了2个标签，加多了没法保证日志实时读取（我调过性能参数，很遗憾并没有解决）
