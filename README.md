@@ -80,5 +80,5 @@ You are free to:
 ## 浅聊摸鱼之道
 
 <div style="display: flex; flex-direction: row;">
-    <img src="resource/img.png" alt="Description 1" width="150" height="200" style="margin-right: 10px;">
+    <img src="resource/images/img.png" alt="Description 1" width="150" height="200" style="margin-right: 10px;">
 </div>

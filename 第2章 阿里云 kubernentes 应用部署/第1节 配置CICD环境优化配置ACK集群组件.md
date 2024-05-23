@@ -572,7 +572,7 @@ RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
             2. 黑白名单场景，如何找寻SNAT地址？
                - 容器服务 ACK > 集群名称/ID > 需要操作的集群id > 集群信息 > 集群资源 >虚拟专有网络 VPC >vpc-****,选中后跳转 > 资源管理 > 公网NAT网关 > 查看弹性公网IP
 地址，如图所示：
-            ![net.png](resource/net.png)
+            ![net.png](../resource/images/net.png)
        - **关闭SNAT**：已经有自定义的NAT网关配置。在这种情况下，需要手动配置NAT规则以满足特定需求。
            1. 关闭后如果需要手动开启则参考如下文档[为已有集群开启公网访问能力](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/enable-an-existing-ack-cluster-to-access-the-internet)
 

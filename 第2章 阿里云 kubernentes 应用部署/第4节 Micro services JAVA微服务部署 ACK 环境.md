@@ -176,7 +176,7 @@ spec:
 ~~~
 配置域名解析后，通过域名测试访问：  
 
-![img.png](resource/vue-web.png)
+![img.png](../resource/images/vue-web.png)
 
 #### 3.后端应用部署
 3.1，拉取git仓库前端应用代码并构建镜像
@@ -308,5 +308,5 @@ spec:
 
 ~~~
 3.4， 测试后端访问
-![img_1.png](resource/猜数字.png)
+![img_1.png](../resource/images/猜数字.png)
 进行猜数字游戏吧。
