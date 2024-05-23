@@ -87,7 +87,9 @@ helm install prometheus prometheus/ -n monitoring
 
 
 常见服务集成配置连接：
+
 grafana datasource：http://prometheus-server.monitoring.svc.cluster.local
+
 tempo remote_write：http://prometheus-server.monitoring.svc.cluster.local/api/v1/write
 ## 3.4 组件介绍
 
