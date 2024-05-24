@@ -587,8 +587,10 @@ RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 2. 初始化 ACK 集群配置
 
    1. 配置免密镜像组件拉取策略
-        -  **安装aliyun-acr-credential-helper组件**
-      
+        -  **aliyun-acr-credential-helper组件特性选择说明参考[免密拉取容器镜像组件托管差异说明参考](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/non-secret-pulling-container-image/#49255764a41jr)**
+        1. 安装免密组件步骤
+
+
    2. 配置NodeLocal DNSCache 缓存代理来提高集群DNS性能
    3. 配置容器网络文件系统 CNFS
    4. 配置 terway 参数优化
