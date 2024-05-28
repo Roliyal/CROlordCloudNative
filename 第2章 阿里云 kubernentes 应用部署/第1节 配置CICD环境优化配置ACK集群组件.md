@@ -663,8 +663,8 @@ RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
         3. 配置完成后，可通过ack控制台验证镜像是否拉取成功，如有问题可以提issue咨询。
   
      2. 配置NodeLocal DNSCache 缓存代理来提高集群DNS性能
-        - **使用NodeLocal DNSCache 说明参考[使用NodeLocal DNSCache官网文档](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/configure-nodelocal-dnscache)**
-        1. 根据以上文档安装配置好后，需要注意NodeLocal DNSCache 约束。
+        - **使用NodeLocal DNSCache 说明参考[使用NodeLocal DNSCache](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/configure-nodelocal-dnscache)**
+        1. 根据以上文档安装配置好后，需要注意NodeLocal DNSCache 对 Pod 创建约束，需要配置Forward插件与上游VPC DNS服务器的默认协议参考操作微电脑[修改方式参考](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/dns-best-practice#29c283410edkw)
         2. 验证测试流程方案
         ```shell
          # 开启指定命令空间是否具备NodeLocal DNSCache能力
@@ -726,7 +726,7 @@ RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
          done
         ```
            3. 查看脚本执行结果
-![dns.png](../resource/images/dns.png)
+        ![dns.png](../resource/images/dns.png)
            4. (可选)执行dig命令验证，对比Query time字段结果，查询是否满足DNS优化需求
         ```shell
         kubectl exec -it dns-test-default-a -n default-a -- dig kubernetes.default.svc.cluster.local
