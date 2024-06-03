@@ -602,144 +602,241 @@ RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
       - **[Nginx Ingress、ALB Ingress和MSE Ingress对比](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/comparison-among-nginx-ingresses-alb-ingresses-and-mse-ingresses-1)**
       - **ALB Ingress**：基于阿里云应用型负载均衡ALB（Application Load Balancer），属于全托管免运维的云服务。单个ALB实例支持100万QPS，提供更强大的Ingress流量管理功能，适用于需要高性能、自动扩展和高级流量管理功能的应用。
       - **Nginx Ingress**：需要您自行运维，如果您对网关定制有强烈的需求，可以选择Nginx Ingress，开源社区支持的Nginx Ingress，适用于中小规模的集群，具有灵活的配置和广泛的社区支持。
-      - **MSE Ingress**：基于阿里云MSE（Microservices Engine）云原生网关，属于全托管免运维的云服务。单个MSE云原生网关实例支持100万QPS，提供更为强大的Ingress流量管理功能，将传统流量网关、微服务网关和安全网关三合一，通过硬件加速、WAF本地防护和插件市场等功能，构建一个高集成、高性能、易扩展、热更新的云原生网关，支持流量灰度发布和熔断限流等高级功能。
+        - **MSE Ingress**：基于阿里云MSE（Microservices Engine）云原生网关，属于全托管免运维的云服务。单个MSE云原生网关实例支持100万QPS，提供更为强大的Ingress流量管理功能，将传统流量网关、微服务网关和安全网关三合一，通过硬件加速、WAF本地防护和插件市场等功能，构建一个高集成、高性能、易扩展、热更新的云原生网关，支持流量灰度发布和熔断限流等高级功能。
 
-- **本文将以阿里云MSE云原生网关完成整个实践部署，通过这些优化的步骤和注意事项，可以帮助您根据具体需求和环境选择合适的ACK配置，确保集群在功能、性能和安全性方面达到最佳效果。**
+          - **本文将以阿里云MSE云原生网关完成整个实践部署，通过这些优化的步骤和注意事项，可以帮助您根据具体需求和环境选择合适的ACK配置，确保集群在功能、性能和安全性方面达到最佳效果。**
 
-  2. 初始化 ACK 集群配置
+            2. 初始化 ACK 集群配置
 
-     1. 配置免密镜像组件拉取策略
-        - **aliyun-acr-credential-helper组件特性选择说明参考[免密拉取容器镜像组件托管差异说明参考](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/non-secret-pulling-container-image/#49255764a41jr)**
+               1. 配置免密镜像组件拉取策略
+                  - **aliyun-acr-credential-helper组件特性选择说明参考[免密拉取容器镜像组件托管差异说明参考](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/non-secret-pulling-container-image/#49255764a41jr)**
 
-        1. 安装免密组件步骤参考，建议tokenMode 选择 auto 模式，安装组件参考控制台说明 [参考地址](https://help.aliyun.com/zh/acr/user-guide/use-the-aliyun-acr-credential-helper-component-to-pull-images-without-using-secrets#section-qvh-e83-hgj)
-        2. 在具备操作 kubectl 节点执行自动配置脚本如下，（企业版实例ID为 acr 控制台 instance_id）
-           ```shell
-           #!/bin/bash
-           prompt() {
-           local prompt_text=$1
-           local default_value=$2
-           read -p "$prompt_text [$default_value]: " input
-           echo "${input:-$default_value}"
-           }
+                  1. 安装免密组件步骤参考，建议tokenMode 选择 auto 模式，安装组件参考控制台说明 [参考地址](https://help.aliyun.com/zh/acr/user-guide/use-the-aliyun-acr-credential-helper-component-to-pull-images-without-using-secrets#section-qvh-e83-hgj)
+                  2. 在具备操作 kubectl 节点执行自动配置脚本如下，（企业版实例ID为 acr 控制台 instance_id）
+                     ```shell
+                     #!/bin/bash
+                     prompt() {
+                     local prompt_text=$1
+                     local default_value=$2
+                     read -p "$prompt_text [$default_value]: " input
+                     echo "${input:-$default_value}"
+                     }
 
-           instance_id=$(prompt "请输入企业版实例ID（个人版请留空）" "")
-           watch_namespace=$(prompt "请输入watch-namespace" "default")
-           notify_email=$(prompt "请输入通知邮箱（如果不需要请留空）" "")
-           service_account=$(prompt "请输入service-account" "default")
-           enable_webhook=$(prompt "是否启用webhook能力（true/false，默认false）" "false")
+                     instance_id=$(prompt "请输入企业版实例ID（个人版请留空）" "")
+                     watch_namespace=$(prompt "请输入watch-namespace" "default")
+                     notify_email=$(prompt "请输入通知邮箱（如果不需要请留空）" "")
+                     service_account=$(prompt "请输入service-account" "default")
+                     enable_webhook=$(prompt "是否启用webhook能力（true/false，默认false）" "false")
 
-           domains=""
-           region_id=""
+                     domains=""
+                     region_id=""
 
-           if [[ -n "$instance_id" ]]; then
-           domains=$(prompt "请输入域名（如果不需要请留空）" "")
-           region_id=$(prompt "请输入地域ID（如果为默认地域请留空）" "cn-hongkong")
-           fi
+                     if [[ -n "$instance_id" ]]; then
+                     domains=$(prompt "请输入域名（如果不需要请留空）" "")
+                     region_id=$(prompt "请输入地域ID（如果为默认地域请留空）" "cn-hongkong")
+                     fi
 
-           patch_content="{\"data\":{"
-           patch_content+="\"watch-namespace\":\"$watch_namespace\","
-           patch_content+="\"notify-email\":\"$notify_email\","
-           patch_content+="\"service-account\":\"$service_account\","
+                     patch_content="{\"data\":{"
+                     patch_content+="\"watch-namespace\":\"$watch_namespace\","
+                     patch_content+="\"notify-email\":\"$notify_email\","
+                     patch_content+="\"service-account\":\"$service_account\","
 
-           if [[ -n "$instance_id" ]]; then
-           patch_content+="\"acr-registry-info\":\"- instanceId: \\\"$instance_id\\\"\\n  regionId: \\\"$region_id\\\"\\n  domains: \\\"$domains\\\"\","
-           else
-           patch_content+="\"acr-registry-info\":\"#- instanceId: \\\"\\\"\","
-           fi
+                     if [[ -n "$instance_id" ]]; then
+                     patch_content+="\"acr-registry-info\":\"- instanceId: \\\"$instance_id\\\"\\n  regionId: \\\"$region_id\\\"\\n  domains: \\\"$domains\\\"\","
+                     else
+                     patch_content+="\"acr-registry-info\":\"#- instanceId: \\\"\\\"\","
+                     fi
 
-           if [[ "$enable_webhook" == "true" ]]; then
-           patch_content+="\"webhook-configuration\":\"enable: true\\n  failure-policy: Ignore\\n  timeout-seconds: 10\","
-           fi
+                     if [[ "$enable_webhook" == "true" ]]; then
+                     patch_content+="\"webhook-configuration\":\"enable: true\\n  failure-policy: Ignore\\n  timeout-seconds: 10\","
+                     fi
 
-           patch_content=${patch_content%,}
-           patch_content+="}}"
+                     patch_content=${patch_content%,}
+                     patch_content+="}}"
 
-           kubectl patch cm acr-configuration -n kube-system --type merge --patch "$patch_content"
+                     kubectl patch cm acr-configuration -n kube-system --type merge --patch "$patch_content"
 
-           echo "ConfigMap 'acr-configuration' 更新成功。"
-           ```
-           **2.1执行结果示意图**
-           ![update-configmap-acr.png](../resource/images/update-configmap-acr.png)
-        3. 配置完成后，可通过ack控制台验证镜像是否拉取成功，如有问题可以提issue咨询。
+                     echo "ConfigMap 'acr-configuration' 更新成功。"
+                     ```
+                     **2.1执行结果示意图**
+                     ![update-configmap-acr.png](../resource/images/update-configmap-acr.png)
+                  3. 配置完成后，可通过ack控制台验证镜像是否拉取成功，如有问题可以提issue咨询。
   
-     2. 配置NodeLocal DNSCache 缓存代理来提高集群DNS性能
-        - **使用NodeLocal DNSCache 说明参考[使用NodeLocal DNSCache](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/configure-nodelocal-dnscache)**
-        1. 根据以上文档安装配置好后，需要注意NodeLocal DNSCache 对 Pod 创建约束，需要配置Forward插件与上游VPC DNS服务器的默认协议参考操作微电脑[修改方式参考](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/dns-best-practice#29c283410edkw)
-        2. 验证测试流程方案
-        ```shell
-         # 开启指定命令空间是否具备NodeLocal DNSCache能力
-         kubectl label namespace default node-local-dns-injection=enabled
-         # 创建测试命名空间验证流程
-         ##1、创建测试程序
-         kubectl run dns-test-default --namespace=default --image=alpine -- /bin/sh -c "apk add --no-cache bind-tools && sleep 3600"
-         kubectl run dns-test-default-a --namespace=default-a --image=alpine -- /bin/sh -c "apk add --no-cache bind-tools && sleep 3600"
-         ##2、编写脚本验证
-         #!/bin/bash
+               2. 配置NodeLocal DNSCache 缓存代理来提高集群DNS性能
+                  - **使用NodeLocal DNSCache 说明参考[使用NodeLocal DNSCache](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/configure-nodelocal-dnscache)**
+                  1. 根据以上文档安装配置好后，需要注意NodeLocal DNSCache 对 Pod 创建约束，需要配置Forward插件与上游VPC DNS服务器的默认协议参考操作微电脑[修改方式参考](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/dns-best-practice#29c283410edkw)
+                  2. 验证测试流程方案
+                  ```shell
+                   # 开启指定命令空间是否具备NodeLocal DNSCache能力
+                   kubectl label namespace default node-local-dns-injection=enabled
+                   # 创建测试命名空间验证流程
+                   ##1、创建测试程序
+                   kubectl run dns-test-default --namespace=default --image=alpine -- /bin/sh -c "apk add --no-cache bind-tools && sleep 3600"
+                   kubectl run dns-test-default-a --namespace=default-a --image=alpine -- /bin/sh -c "apk add --no-cache bind-tools && sleep 3600"
+                   ##2、编写脚本验证
+                   #!/bin/bash
             
-         # 定义命名空间和Pod名称
-         namespaces=("default" "default-a")
-         pods=("dns-test-default" "dns-test-default-a")
+                   # 定义命名空间和Pod名称
+                   namespaces=("default" "default-a")
+                   pods=("dns-test-default" "dns-test-default-a")
             
-         # 测试DNS解析时间的函数
-         test_dns() {
-           namespace=$1
-           pod=$2
-           echo "Testing DNS in namespace: $namespace, pod: $pod"
+                   # 测试DNS解析时间的函数
+                   test_dns() {
+                     namespace=$1
+                     pod=$2
+                     echo "Testing DNS in namespace: $namespace, pod: $pod"
             
-           times=()
-           for i in $(seq 1 100); do
-             result=$(kubectl exec -it $pod -n $namespace -- dig +tries=1 +time=1 kubernetes.default.svc.cluster.local | grep 'Query time:' | awk '{print $4}')
-             if [[ $result =~ ^[0-9]+$ ]]; then
-               times+=($result)
-             fi
-           done
+                     times=()
+                     for i in $(seq 1 100); do
+                       result=$(kubectl exec -it $pod -n $namespace -- dig +tries=1 +time=1 kubernetes.default.svc.cluster.local | grep 'Query time:' | awk '{print $4}')
+                       if [[ $result =~ ^[0-9]+$ ]]; then
+                         times+=($result)
+                       fi
+                     done
             
-           if [ ${#times[@]} -gt 0 ]; then
-             total=0
-             min=${times[0]}
-             max=${times[0]}
-             for t in "${times[@]}"; do
-               total=$((total + t))
-               if (( t < min )); then
-                 min=$t
-               fi
-               if (( t > max )); then
-                 max=$t
-               fi
-             done
-             avg=$((total / ${#times[@]}))
-             echo "Average time: $avg ms"
-             echo "Minimum time: $min ms"
-             echo "Maximum time: $max ms"
-           else
-             echo "No valid timing data collected."
-           fi
-           echo "Completed 100 dig operations in namespace: $namespace, pod: $pod"
-         }
+                     if [ ${#times[@]} -gt 0 ]; then
+                       total=0
+                       min=${times[0]}
+                       max=${times[0]}
+                       for t in "${times[@]}"; do
+                         total=$((total + t))
+                         if (( t < min )); then
+                           min=$t
+                         fi
+                         if (( t > max )); then
+                           max=$t
+                         fi
+                       done
+                       avg=$((total / ${#times[@]}))
+                       echo "Average time: $avg ms"
+                       echo "Minimum time: $min ms"
+                       echo "Maximum time: $max ms"
+                     else
+                       echo "No valid timing data collected."
+                     fi
+                     echo "Completed 100 dig operations in namespace: $namespace, pod: $pod"
+                   }
             
-         # 循环测试并收集结果
-         for i in $(seq 1 5); do
-           echo "Test iteration: $i"
-           for j in ${!namespaces[@]}; do
-             test_dns ${namespaces[$j]} ${pods[$j]}
-           done
-         done
-        ```
-           3. 查看脚本执行结果
-        ![dns.png](../resource/images/dns.png)
-           4. (可选)执行dig命令验证，对比Query time字段结果，查询是否满足DNS优化需求
-        ```shell
-        kubectl exec -it dns-test-default-a -n default-a -- dig kubernetes.default.svc.cluster.local
-        kubectl exec -it dns-test-default -n default -- dig kubernetes.default.svc.cluster.local
-        ```
-        ![dns-two.png](../resource/images/dns-two.png)
+                   # 循环测试并收集结果
+                   for i in $(seq 1 5); do
+                     echo "Test iteration: $i"
+                     for j in ${!namespaces[@]}; do
+                       test_dns ${namespaces[$j]} ${pods[$j]}
+                     done
+                   done
+                  ```
+                     3.  查看脚本执行结果
+          ![dns.png](../resource/images/dns.png)
+                     4. (可选)执行dig命令验证，对比Query time字段结果，查询是否满足DNS优化需求
+                  ```shell
+                  kubectl exec -it dns-test-default-a -n default-a -- dig kubernetes.default.svc.cluster.local
+                  kubectl exec -it dns-test-default -n default -- dig kubernetes.default.svc.cluster.local
+                  ```
+                  ![dns-two.png](../resource/images/dns-two.png)
 
-     3. 配置 terway 参数优化
-        - 
-     4. 配置调度优化
-        -
-     5. 配置容器网络文件系统 CNFS
-        - 
-
+               3. 配置 terway 参数
+                  - **非特殊场景请勿修改** [Terway参数说明](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/terway-configuration-parameters)
+                  - 如果需要修改，请在初始化集群时完成，尽量在业务低峰时间操作
+             
+               4. 配置调度优化
+                  - **调度场景** [调度概述](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/scheduling-overview)
+                  - 本文不设计 GPU 异构计算场景示例，如有问题可以提issue，以及咨询官方客服。
+                    1. 自定义弹性资源优先级调度利用不同节点池做资源调度，
+                       - 需要使用ECI资源时，已部署ack-virtual-node。具体操作，请参见[ACK使用ECI](https://help.aliyun.com/zh/eci/user-guide/connection-overview)。
+                       - 为已有资源配置交互式创建为核心应用，开启配置CPU拓扑感知调度，脚本为开启NAMESPACE下当前资源类型配置[CPU拓扑感知调度](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/topology-aware-cpu-scheduling)
+                  ```bash
+                   #!/bin/bash
+            
+                   # 读取用户输入的命名空间
+                   read -p "请输入命名空间: " NAMESPACE
+            
+                   # 读取用户是否配置 cpu-policy: 'static-burst'
+                   read -p "是否配置 cpu-policy: 'static-burst' (yes/no): " CONFIG_CPU_POLICY
+                   if [[ "$CONFIG_CPU_POLICY" == "yes" ]]; then
+                   CPU_POLICY="cpu-policy=static-burst"
+                   else
+                   CPU_POLICY=""
+                   fi
+            
+                   # 读取用户是否配置 cpuset-scheduler: "true"
+                   read -p "是否配置 cpuset-scheduler: 'true' (yes/no): " CONFIG_CPUSET_SCHEDULER
+                   if [[ "$CONFIG_CPUSET_SCHEDULER" == "yes" ]]; then
+                   CPUSET_SCHEDULER="cpuset-scheduler=true"
+                   else
+                   CPUSET_SCHEDULER=""
+                   fi
+            
+                   # 函数：添加annotations
+                   annotate_resource() {
+                   local resource=$1
+                   local name=$2
+                   echo "Processing $resource: $name"
+            
+                   # 构建 annotate 命令
+                   annotate_cmd="kubectl annotate $resource $name -n $NAMESPACE"
+                   if [[ ! -z "$CPU_POLICY" ]]; then
+                   annotate_cmd="$annotate_cmd $CPU_POLICY"
+                   fi
+                   if [[ ! -z "$CPUSET_SCHEDULER" ]]; then
+                   annotate_cmd="$annotate_cmd $CPUSET_SCHEDULER"
+                   fi
+                   annotate_cmd="$annotate_cmd --overwrite"
+            
+                   # 执行 annotate 命令
+                   eval $annotate_cmd
+                   }
+            
+                   # 获取所有资源类型的名称
+                   resources=("pods" "deployments" "daemonsets" "statefulsets")
+                   for resource in "${resources[@]}"; do
+                   items=$(kubectl get $resource -n $NAMESPACE -o jsonpath='{.items[*].metadata.name}')
+                   for item in $items; do
+                   annotate_resource $resource $item
+                   done
+                   done
+            
+                   echo "Annotations added to all resources in namespace $NAMESPACE"
+                  ```
+                  - 可以通过`kubectl get pods -n [指定ns名称] -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{.metadata.annotations}{"\n\n"}{end}' `
+                    - 建议配置使用负载感知调度以及热点打散策略[使用负载热点打散重调度](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/use-load-aware-pod-scheduling)
+                    - 方案一 配置多可用区 Pod 打散，yaml 片段如下示意
+                      1.  `maxSkew` 定义了在指定的拓扑域（如区域、节点等）之间允许的最大偏差值。这里的值为 1，表示每个区域中最多只能比其他区域多 1 个 Pod。例如，如果一个区域有 2 个 Pod，那么其他区域中最多只能有 1 个或 3 个 Pod。
+                      2.  `topologyKey` 指定了拓扑域的键，这里使用的是 `topology.kubernetes.io/zone`，表示扩展约束是针对不同的区域（zone）进行的。您可以使用不同的键，如 `kubernetes.io/hostname` 针对不同的节点。
+                      3.  `whenUnsatisfiable` 指定了当无法满足拓扑扩展约束时应该采取的措施。`DoNotSchedule` 表示如果无法满足约束条件，则不要调度 Pod。这可以防止 Pod 被调度到不满足条件的节点或区域中。
+                      4.  `labelSelector` 定义了选择器，用于选择哪些 Pod 受这个拓扑扩展约束的影响。这里的选择器是通过 `matchLabels` 指定的，选择所有带有 `app: my-app` 标签的 Pod。
+                  ```yaml
+                    topologySpreadConstraints:
+                    - maxSkew: 1
+                    topologyKey: topology.kubernetes.io/zone
+                    whenUnsatisfiable: DoNotSchedule
+                    labelSelector:
+                    matchLabels:
+                    app: my-app
+                    ```
+      
+               5. 配置容器网络文件系统 CNFS
+                  - **[使用CNFS管理NAS共享存储卷（推荐）](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/use-cnfs-to-manage-shared-nas-volumes-recommended)**
+                  - **[创建CNFS管理NAS文件系统](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/use-cnfs-to-manage-nas-file-systems-recommended)**
+                  - **截止2024年0603日，仅支持分布式缓存支持的操作系统为Alibaba Cloud Linux 2，内核版本为v4.19.91-23至v4.19.91-26版本，Kubernetes版本为v1.20及以上，且存储插件选择为CSI。CSI-Plugin和CSI-Provisioner组件版本不低于v1.22.11-abbb810e-aliyun，storage-operator组件版本不低于v1.22.86-041b094-aliyun条件限制[开启CNFS NAS计算端分布式缓存](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/enable-the-distributed-caching-feature-of-the-cnfs-client)**
+                  
+                    - 实践配置
+                      1. 优先建议使用已有 nas 创建，参考方案[创建已有nas](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/use-cnfs-to-manage-nas-file-systems#section-qqn-h8b-5u9)）
+                       ```shell
+                      # 当NAS文件系统存在时，加载已创建的NAS文件系统。
+                      cat <<EOF | kubectl apply -f -
+                      apiVersion: storage.alibabacloud.com/v1beta1
+                      kind: ContainerNetworkFileSystem
+                      metadata:
+                        name: cnfs-nas-filesystem
+                      spec:
+                        description: "cnfs"
+                        type: nas
+                        reclaimPolicy: Retain
+                        parameters:
+                          server: 17f7e4****-h****.cn-beijing.nas.aliyuncs.com
+                      EOF
+                      ```
+                      2. 
+                     
 3. Demo 演示如何部署一个应用到容器服务 Kubernetes 版 ACK 环境
    1. 一个配置jenins流水线
