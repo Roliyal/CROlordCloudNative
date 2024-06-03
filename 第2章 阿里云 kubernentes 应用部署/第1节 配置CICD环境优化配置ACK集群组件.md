@@ -831,7 +831,7 @@ RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
            type: nas
            reclaimPolicy: Retain
            parameters:
-             server: 12ab094862d-ylt35.cn-hongkong.nas.aliyuncs.com
+             server: 4567897879-ylt35.cn-hongkong.nas.aliyuncs.com
          ---
          apiVersion: storage.k8s.io/v1
          kind: StorageClass
@@ -849,8 +849,92 @@ RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
          allowVolumeExpansion: true # 可选参数，指定为true表示允许对NAS文件系统进行扩容。
          EOF
            ```
-      
-           2. 
-                     
+         ![img.png](../resource/images/img.png)
+         2. 根据配置 StorageClass 可验证是否创建成功，业务pod是否完成。
+```yaml
+# 创建CNFS、StorageClass和Deployment、StatefulSet对象。
+cat << EOF | kubectl apply -f -
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: cnfs-nas-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: crolord-cnfs-uat-nas
+  resources:
+    requests:
+      storage: 70Gi # 如果打开目录限额功能，则storage字段会生效，动态创建目录写入数据量最大为70 GiB。
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cnfs-crolord-deployment
+  labels:
+    app: nginx
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        volumeMounts:
+        - mountPath: "/data"
+          name: cnfs-nas-pvc
+      volumes:
+      - name: cnfs-nas-pvc
+        persistentVolumeClaim:
+          claimName: cnfs-nas-pvc
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: cnfs-nas-sts
+  labels:
+    app: nginx
+spec:
+  serviceName: "nginx"
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:latest
+        volumeMounts:
+        - mountPath: "/data"
+          name: www
+  volumeClaimTemplates:
+  - metadata:
+      name: www
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "crolord-cnfs-uat-nas"
+      resources:
+        requests:
+          storage: 50Gi # 如果打开目录限额功能，则storage字段会生效，动态创建目录写入数据量最大为50 GiB。
+EOF
+```
+
+2. 验证方案如下
+```shell
+kubectl exec cnfs-nas-sts-0 -ti -- sh -c 'dd if=/dev/zero of=/data/1G.tmpfile bs=1G count=1;'
+kubectl exec cnfs-nas-sts-0 -- ls -arlth /data
+kubectl exec cnfs-nas-sts-0 -- mount |grep nfs
+```
+至此配置存储卷完成，如有问题可以提 issue 咨询。
+
 3. Demo 演示如何部署一个应用到容器服务 Kubernetes 版 ACK 环境
    1. 一个配置jenins流水线
