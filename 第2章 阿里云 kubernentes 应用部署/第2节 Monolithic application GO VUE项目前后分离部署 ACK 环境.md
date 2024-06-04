@@ -1,153 +1,1061 @@
-# ACK ingress 选型配置
+## Monolithic Application GO VUE项目前后分离部署到ACK环境
 
-### ingress应用场景：
-&emsp;&emsp;在K8S中，Kubernetes 集群内的网络环境与外部是隔离的，也就是说 Kubernetes 集群外部的客户端无法直接访问到集群内部的服务，Kubernetes通过 Kube-proxy服务实现了Service的对外发布及负载均衡。 但是在实际的互联网应用场景中，不仅要实现单纯的转发，还有更为细致的策略需求，基于该需求，Kubernetes引入资源对象ingress，我们会从多个角度对比Nginx ingress，ALB ingress，MSE ingress ，同时介绍如何配置这三个ingress对象，我们希望这篇文章能够帮助您选择到更贴合您业务场景的ingress对象，并且能快速方便的使用它。
+### 1. 概述
+
+本篇文章将介绍如何将一个基于 GO 和 VUE 的应用进行前后端分离，并部署到阿里云的 Kubernetes 服务（ACK）环境，以及选择部署前端资源到 oss 。整个流程将涵盖 Jenkins Pipeline 的使用，以及安全和质量检测工具如 Trivy 和 SonarQube 的集成。此外，我们还将涉及多架构构建的相关内容。
+
+### 2. 环境准备
+
+#### 2.1 工具和服务
+
+- **Jenkins**：用于持续集成和持续部署（CI/CD）的自动化工具。
+- **Trivy**：用于容器安全扫描的开源工具。
+- **SonarQube**：用于代码质量和安全分析的平台。
+- **kaniko**：用于构建和管理容器化应用。
+- **Kubernetes (ACK)**：阿里云的托管 Kubernetes 服务，用于容器编排和管理。
+
+#### 2.2 基本配置
+
+- 阿里云 ACK 集群
+- Jenkins Server
+- SonarQube Server
+- ACR 阿里云容器镜像服务
+
+### 3. 项目结构
+
+```plaintext
+.
+├── go-guess-number
+│   ├── Dockerfile
+│   ├── go-guess-number.yaml
+│   ├── go.mod
+│   ├── go.sum
+│   ├── jenkinsfile
+│   └── main.go
+└── vue-go-guess-number
+    ├── Dockerfile
+    ├── README.md
+    ├── babel.config.js
+    ├── default.conf
+    ├── jsconfig.json
+    ├── localhost.xml
+    ├── package-lock.json
+    ├── package.json
+    ├── public
+    │   ├── favicon.ico
+    │   └── index.html
+    ├── src
+    │   ├── App.vue
+    │   ├── GuessGame.vue
+    │   ├── LogInGame.vue
+    │   ├── assets
+    │   │   └── logo.png
+    │   ├── components
+    │   │   └── HelloWorld.vue
+    │   ├── config.js
+    │   ├── main.js
+    │   └── vue.config.js
+    └── vue-go-guess-number.yaml
+
+7 directories, 25 files
+
+```
+
+### 4. Jenkins Pipeline 配置前后端配置
+
+#### 4.1 前端部署 OSS Jenkinsfile 
+
+```groovy
+pipeline {
+    // 定义使用的 Jenkins agent 类型
+    agent { kubernetes { /* 配置省略 */ } }
+    
+    // 定义环境变量
+    environment {
+        GIT_BRANCH = 'main' // Git主分支的默认值
+        MAJOR_VERSION = 'v1' // 主版本号
+        MINOR_VERSION = '0'  // 次版本号
+        PLATFORMS = 'linux/amd64,linux/arm64' // 构建目标平台
+        MAJOR = "${params.MAJOR_VERSION ?: env.MAJOR_VERSION ?: '1'}" // 主版本号，允许通过参数覆盖
+        MINOR = "${params.MINOR_VERSION ?: env.MINOR_VERSION ?: '0'}" // 次版本号，允许通过参数覆盖
+        PATCH = "${env.BUILD_NUMBER}" // 构建号，用作修订版本号
+        VERSION_TAG = "${MAJOR}.${MINOR}.${PATCH}" // 组合版本标签
+        IMAGE_REGISTRY = "${params.IMAGE_REGISTRY}" // 镜像仓库地址
+        IMAGE_NAMESPACE = "${params.IMAGE_NAMESPACE}" // 镜像命名空间
+        IMAGE_ID = "${params.IMAGE_NAMESPACE}" // 镜像ID
+        SONARQUBE_DOMAIN = "${params.SONARQUBE_DOMAINE}" // Sonarqube 域名配置
+        DEPLOY_PATH = "${params.OSS_DEPLOY_PATH}"
+        OSSENDPOINT = "${params.OSSENDPOINT}"
+        OSSBUCKET = "${params.OSSBUCKET}"
+        DEPLOY_ENVIRONMENT = "${params.DEPLOY_ENVIRONMENT}"  // 直接使用参数作为环境变量
+    }
+
+    // 触发条件
+    triggers { githubPush() }
+
+    // 参数定义
+    parameters {
+        persistentString(name: 'BRANCH', defaultValue: 'main', description: 'Initial default branch: main')
+        persistentChoice(name: 'PLATFORMS', choices: ['linux/amd64', 'linux/amd64,linux/arm64'], description: 'Target platforms, initial value: linux/amd64,linux/arm64')
+        persistentString(name: 'GIT_REPOSITORY', defaultValue: 'https://github.com/Roliyal/CROlordCodelibrary.git', description: 'Git repository URL, default: https://github.com/Roliyal/CROlordCodelibrary.git')
+        persistentString(name: 'MAJOR_VERSION', defaultValue: '1', description: 'Major version number, default: 1')
+        persistentString(name: 'MINOR_VERSION', defaultValue: '0', description: 'Minor version number, default: 0')
+        persistentString(name: 'BUILD_DIRECTORY', defaultValue: 'Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/vue-go-guess-number', description: 'Build directory path, default path: Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/go-guess-number')
+        persistentString(name: 'IMAGE_REGISTRY', defaultValue: 'crolord-registry-registry-vpc.cn-hongkong.cr.aliyuncs.com', description: 'Image registry address, default: crolord-registry-registry-vpc.cn-hongkong.cr.aliyuncs.com')
+        persistentString(name: 'IMAGE_NAMESPACE', defaultValue: 'febe', description: 'Image namespace, default: febe')
+        persistentString(name: 'SONARQUBE_DOMAINE', defaultValue: 'sonarqube.roliyal.com', description: 'SonarQube domain, default: sonarqube.roliyal.com')
+        persistentString(name: 'OSS_DEPLOY_PATH', defaultValue: '', description: 'The OSS path where artifacts will be deployed')
+        persistentString(name: 'OSSENDPOINT', defaultValue: 'oss-cn-hongkong.aliyuncs.com', description: 'The OSSEndpoin address default:oss-cn-hongkong.aliyuncs.com')
+        persistentString(name: 'OSSBUCKET', defaultValue: 'febe', description: 'The OSS Bucket address default:febecrolord')
+        choice(name: 'DEPLOY_ENVIRONMENT', choices: ['development', 'staging', 'production'], description: 'The deployment environment')
+        booleanParam(name: 'REVERT_TO_PREVIOUS_VERSION', defaultValue: false, description: 'Select Yes to revert to previous version')
+    }
+    
+    stages {
+        stage('Revert to Previous Version') {
+            agent { kubernetes { inheritFrom 'kanikoamd' } }
+            when {
+                expression {
+                    return params.REVERT_TO_PREVIOUS_VERSION
+                }
+            }
+            steps {
+                container('kanikoamd') {
+                    script {
+                        // 使用 withCredentials 从 Jenkins 凭证存储中安全获取敏感信息
+                        withCredentials([string(credentialsId: 'access_key_id', variable: 'ACCESS_KEY_ID'),
+                                         string(credentialsId: 'access_key_secret', variable: 'ACCESS_KEY_SECRET')]) {
+                            def bucketName = "${env.OSSBUCKET}-${env.DEPLOY_ENVIRONMENT}"
+                            sh "ossutil config -e ${env.OSSENDPOINT} -i ${ACCESS_KEY_ID} -k ${ACCESS_KEY_SECRET}"
+                            // 恢复到上一个版本
+                            sh "ossutil revert-versioning oss://${bucketName} -r"    
+                            echo "Reverted to previous version on bucket: ${bucketName}"
+                        }
+                    }
+                }
+            }
+        }
+    stage('Refresh CDN') {
+        agent { kubernetes { inheritFrom 'kanikoamd' } }
+            when {
+            expression {
+            return params.REVERT_TO_PREVIOUS_VERSION
+                }
+            }
+        steps {
+           // 指定在特定容器中执行            
+            container('kanikoamd') {
+                script {
+                    echo "Refreshing CDN..."
+                        // 使用 withCredentials 从 Jenkins 凭证存储中安全获取敏感信息
+                    withCredentials([string(credentialsId: 'access_key_id', variable: 'ACCESS_KEY_ID'),
+                                     string(credentialsId: 'access_key_secret', variable: 'ACCESS_KEY_SECRET')]) {
+                    // 下载 cdn.go 文件
+                    def cdnGo = httpRequest(
+                    url: 'https://raw.githubusercontent.com/Roliyal/CROLordSharedLlibraryCode/main/cdn.go',
+                    outputFile: 'cdn.go'
+                                    )
+                                    echo "cdn.go downloaded: ${cdnGo.status}"
+                
+                                    // 下载 urls.txt 文件
+                                    def urlsTxt = httpRequest(
+                                        url: 'https://raw.githubusercontent.com/Roliyal/CROLordSharedLlibraryCode/main/urls.txt',
+                                        outputFile: 'urls.txt'
+                                    )
+                                    echo "urls.txt downloaded: ${urlsTxt.status}"
+                                    // 初始化 go module 并获取依赖
+                                    sh """
+                                    go mod init cdn-refresh
+                                    go get github.com/aliyun/alibaba-cloud-sdk-go/services/cdn
+                                    """
+                                    // 执行 go run cdn.go 命令
+                                    withEnv([
+                                        "ACCESS_KEY_ID=${ACCESS_KEY_ID}",
+                                        "ACCESS_KEY_SECRET=${ACCESS_KEY_SECRET}"
+                                    ]) {
+                                        sh '''
+                                        go run cdn.go -i ${ACCESS_KEY_ID} -k ${ACCESS_KEY_SECRET} -r urls.txt -t clear -o File
+                                        go run cdn.go -i ${ACCESS_KEY_ID} -k ${ACCESS_KEY_SECRET} -r urls.txt -t push -a domestic
+                                        '''
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }        
+
+        stage('Main Pipeline') {
+            when {
+                not {
+                    expression {
+                        return params.REVERT_TO_PREVIOUS_VERSION
+                    }
+                }
+            }
+            stages {
+                stage('Version') {
+                    steps {
+                        script {
+                            env.PATCH_VERSION = env.BUILD_NUMBER
+                            env.VERSION_NUMBER = "${env.MAJOR}.${env.MINOR}.${env.PATCH_VERSION}"
+                            echo "Current Version: ${env.VERSION_NUMBER}"
+                        }
+                    }
+                }
+
+                stage('Checkout') {
+                    steps {
+                        cleanWs() // 清理工作空间
+                        script {
+                            env.GIT_BRANCH = params.BRANCH
+                        }
+                        // 检出Git仓库
+                        checkout scm: [
+                            $class: 'GitSCM',
+                            branches: [[name: "*/${env.GIT_BRANCH}"]],
+                            userRemoteConfigs: [[url: params.GIT_REPOSITORY]],
+                            extensions: [[$class: 'CloneOption', depth: 1, noTags: false, reference: '', shallow: true]]
+                        ]
+                        echo '代码检出完成'
+                    }
+                }
+
+                stage('Check Directory') {
+                    steps {
+                        echo "Current working directory: ${pwd()}"
+                        sh 'ls -la'
+                        stash includes: '**', name: 'source-code' // 存储工作空间，包括Dockerfile和应用代码
+                    }
+                }
+
+                stage('SonarQube analysis') {
+                    agent { kubernetes { inheritFrom 'kanikoamd' } }
+                    steps {
+                        // 从之前的阶段恢复存储的源代码
+                        unstash 'source-code'
+                        // 指定在特定容器中执行
+                        container('kanikoamd') {
+                            // 设置SonarQube环境
+                            withSonarQubeEnv('sonar') {
+                                script {
+                                    // 使用withCredentials从Jenkins凭据中获取SonarQube token
+                                    withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
+                                        // 执行sonar-scanner命令
+                                        sh """
+                                        sonar-scanner \
+                                          -Dsonar.projectKey=${JOB_NAME} \
+                                          -Dsonar.projectName='${env.IMAGE_NAMESPACE}' \
+                                          -Dsonar.projectVersion=${env.VERSION_TAG} \
+                                          -Dsonar.sources=. \
+                                          -Dsonar.exclusions='**/*_test.go,**/vendor/**' \
+                                          -Dsonar.language=go \
+                                          -Dsonar.host.url=http://${env.SONARQUBE_DOMAIN} \
+                                          -Dsonar.login=${SONAR_TOKEN} \
+                                          -Dsonar.projectBaseDir=${env.BUILD_DIRECTORY} 
+                                        """
+                                    }
+                                    // 使用script块处理HTTP请求和JSON解析
+                                    withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
+                                        def authHeader = "Basic " + ("${SONAR_TOKEN}:".bytes.encodeBase64().toString())
+                                        def response = httpRequest(
+                                            url: "http://${env.SONARQUBE_DOMAIN}/api/qualitygates/project_status?projectKey=${JOB_NAME}",
+                                            customHeaders: [[name: 'Authorization', value: authHeader]],
+                                            consoleLogResponseBody: true,
+                                            acceptType: 'APPLICATION_JSON',
+                                            contentType: 'APPLICATION_JSON'
+                                        )
+                                        def json = readJSON text: response.content
+                                        if (json.projectStatus.status != 'OK') {
+                                            error "SonarQube quality gate failed: ${json.projectStatus.status}"
+                                        } else {
+                                            echo "Quality gate passed successfully."
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                stage('node oss push') {
+                    agent { kubernetes { inheritFrom 'kanikoamd' } }
+                    steps {
+                        // 从之前的阶段恢复存储的源代码
+                        unstash 'source-code'
+                        // 指定在特定容器中执行            
+                        container('kanikoamd') {
+                            script {
+                                echo "Deploying to environment: ${env.DEPLOY_ENVIRONMENT}"
+                                // 使用 withCredentials 从 Jenkins 凭证存储中安全获取敏感信息
+                                withCredentials([string(credentialsId: 'access_key_id', variable: 'ACCESS_KEY_ID'),
+                                                 string(credentialsId: 'access_key_secret', variable: 'ACCESS_KEY_SECRET')]) {
+                                    def buildDir = env.BUILD_DIRECTORY
+                                    sh "bash -c 'cd ${buildDir} && npm cache clean --force && npm install --loglevel verbose && npm run build'"
+                                    echo "Starting Trivy scan..."
+                                    try {
+                                        // 创建 Trivy 扫描脚本
+                                        writeFile file: 'trivy_scan.sh', text: """#!/bin/bash
+                                        echo "Running Trivy scan on directory: ${BUILD_DIRECTORY}"
+                                        trivy fs \
+                                                --vuln-type library \
+                                                --severity HIGH,CRITICAL \
+                                                --format json \
+                                                --output trivy_report.json \
+                                                --ignore-unfixed \
+                                                --no-progress \
+                                                --cache-backend fs \
+                                                ${env.BUILD_DIRECTORY}
+                                        """
+                                        // 赋予脚本执行权限
+                                        sh 'chmod +x trivy_scan.sh'
+                                        // 执行 Trivy 扫描脚本
+                                        sh './trivy_scan.sh'
+                                        // 打印扫描结果
+                                        echo "Trivy Scan Results:"
+                                        sh 'cat trivy_report.json'
+                                        // 解析和检查扫描结果
+                                        def report = readJSON file: 'trivy_report.json'
+                                        // 检查是否有严重漏洞或配置错误
+                                        def hasCriticalVulns = report.Results.any { it.Vulnerabilities?.any { v -> v.Severity == 'CRITICAL' } }
+                                        def hasHighVulns = report.Results.any { it.Vulnerabilities?.any { v -> v.Severity == 'HIGH' } }
+                                        def hasMisconfigErrors = report.Results.any { it.Misconfigurations?.any { m -> m.Severity in ['HIGH', 'CRITICAL'] } }
+                                        def hasSecrets = report.Results.any { it.Secrets?.any() }
+                                        if (hasCriticalVulns || hasHighVulns || hasMisconfigErrors || hasSecrets) {
+                                            error "Trivy scan found vulnerabilities or issues. Check trivy_report.json for details."
+                                        } else {
+                                            echo "No HIGH or CRITICAL vulnerabilities, misconfigurations, or secrets found."
+                                        }
+                                    } catch (Exception e) {
+                                        echo "Trivy scan failed: ${e}"
+                                    }
+                            // 构建存储桶名称
+                            def bucketName = "${env.OSSBUCKET}-${env.DEPLOY_ENVIRONMENT}" 
+                            // 配置 ossutil 和检查存储桶是否存在，以及初始化静态页面、版本控制特性等
+                            sh "ossutil config -e ${env.OSSENDPOINT} -i ${ACCESS_KEY_ID} -k ${ACCESS_KEY_SECRET}"
+                            def bucketExists = sh(script: "ossutil ls oss://${bucketName} --endpoint ${env.OSSENDPOINT}", returnStatus: true)
+                            if (bucketExists != 0) {
+                                def createBucketStatus = sh(script: "ossutil mb oss://${bucketName} --acl public-read --storage-class Standard --redundancy-type ZRS --endpoint ${env.OSSENDPOINT}", returnStatus: true)
+                                if (createBucketStatus != 0) {
+                                    error "Failed to create bucket ${bucketName}. It might already exist or you might not have the correct permissions."
+                                } else {
+                                    // 配置存储桶
+                                    def websiteConfig = httpRequest(
+                                        url: 'https://raw.githubusercontent.com/Roliyal/CROLordSharedLibraryCode/main/localhostnorouting.xml',
+                                        outputFile: "localhostnorouting.xml"
+                                    )
+                                    sh "ossutil website --method put oss://${bucketName} localhostnorouting.xml"
+                                    sh "ossutil bucket-versioning --method put oss://${bucketName} enabled"
+                                }
+                            }
+                                    // 上传 dist 目录到 OSS
+                                    sh "cd ${buildDir} && ossutil cp -rf dist oss://${bucketName}/ --endpoint ${env.OSSENDPOINT}"
+                                    echo "Deployment to OSS completed: ${bucketName}"
+                                    // sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'"
+                                }
+                            }
+                        }
+                    }
+                }
+
+                stage('Refresh CDN') {
+                    agent { kubernetes { inheritFrom 'kanikoamd' } }
+                    steps {
+                        // 指定在特定容器中执行            
+                        container('kanikoamd') {
+                            script {
+                                echo "Refreshing CDN..."
+                                // 使用 withCredentials 从 Jenkins 凭证存储中安全获取敏感信息
+                                withCredentials([string(credentialsId: 'access_key_id', variable: 'ACCESS_KEY_ID'),
+                                                 string(credentialsId: 'access_key_secret', variable: 'ACCESS_KEY_SECRET')]) {
+                                    // 下载 cdn.go 文件
+                                    def cdnGo = httpRequest(
+                                        url: 'https://raw.githubusercontent.com/Roliyal/CROLordSharedLibraryCode/main/cdn.go',
+                                        outputFile: 'cdn.go'
+                                    )
+                                    echo "cdn.go downloaded: ${cdnGo.status}"
+                
+                                    // 下载 urls.txt 文件
+                                    def urlsTxt = httpRequest(
+                                        url: 'https://raw.githubusercontent.com/Roliyal/CROLordSharedLibraryCode/main/urls.txt',
+                                        outputFile: 'urls.txt'
+                                    )
+                                    echo "urls.txt downloaded: ${urlsTxt.status}"
+                                    // 初始化 go module 并获取依赖
+                                    sh """
+                                    go mod init cdn-refresh
+                                    go get github.com/aliyun/alibaba-cloud-sdk-go/services/cdn
+                                    """
+                                    // 执行 go run cdn.go 命令
+                                    withEnv([
+                                        "ACCESS_KEY_ID=${ACCESS_KEY_ID}",
+                                        "ACCESS_KEY_SECRET=${ACCESS_KEY_SECRET}"
+                                    ]) {
+                                        sh '''
+                                        go run cdn.go -i ${ACCESS_KEY_ID} -k ${ACCESS_KEY_SECRET} -r urls.txt -t clear -o File
+                                        go run cdn.go -i ${ACCESS_KEY_ID} -k ${ACCESS_KEY_SECRET} -r urls.txt -t push -a domestic
+                                        '''
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+```
+#### 4.2 前端部署 ACK Jenkinsfile
+```groovy
+pipeline {
+    // 定义使用的 Jenkins agent 类型
+    agent { kubernetes { /* 配置省略 */ } }
+    
+    // 定义环境变量
+    environment {
+        GIT_BRANCH = 'main' // Git主分支的默认值
+        MAJOR_VERSION = 'v1' // 主版本号
+        MINOR_VERSION = '0'  // 次版本号
+        PLATFORMS = 'linux/amd64,linux/arm64' // 构建目标平台
+        MAJOR = "${params.MAJOR_VERSION ?: env.MAJOR_VERSION ?: '1'}" // 主版本号，允许通过参数覆盖
+        MINOR = "${params.MINOR_VERSION ?: env.MINOR_VERSION ?: '0'}" // 次版本号，允许通过参数覆盖
+        PATCH = "${env.BUILD_NUMBER}" // 构建号，用作修订版本号
+        VERSION_TAG = "${MAJOR}.${MINOR}.${PATCH}" // 组合版本标签
+        IMAGE_REGISTRY = "${params.IMAGE_REGISTRY}" // 镜像仓库地址
+        IMAGE_NAMESPACE = "${params.IMAGE_NAMESPACE}" // 镜像命名空间
+        IMAGE_ID = "${params.IMAGE_NAMESPACE}" // 镜像ID
+        SONARQUBE_DOMAIN = "${params.SONARQUBE_DOMAINE}" // Sonarqube 域名配置
+    }
+
+    // 触发条件
+    triggers { githubPush() }
+
+    // 参数定义
+    parameters {
+        persistentString(name: 'BRANCH', defaultValue: 'main', description: 'Initial default branch: main')
+        persistentChoice(name: 'PLATFORMS', choices: ['linux/amd64', 'linux/amd64,linux/arm64'], description: 'Target platforms, initial value: linux/amd64,linux/arm64')
+        persistentString(name: 'GIT_REPOSITORY', defaultValue: 'https://github.com/Roliyal/CROlordCodelibrary.git', description: 'Git repository URL, default: https://github.com/Roliyal/CROlordCodelibrary.git')
+        persistentString(name: 'MAJOR_VERSION', defaultValue: '1', description: 'Major version number, default: 1')
+        persistentString(name: 'MINOR_VERSION', defaultValue: '0', description: 'Minor version number, default: 0')
+        persistentString(name: 'BUILD_DIRECTORY', defaultValue: 'Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/vue-go-guess-number', description: 'Build directory path, default path: Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/go-guess-number')
+        persistentString(name: 'IMAGE_REGISTRY', defaultValue: 'crolord-uat-registry-vpc.cn-hongkong.cr.aliyuncs.com', description: 'Image registry address, default: crolord-registry-registry-vpc.cn-hongkong.cr.aliyuncs.com')
+        persistentString(name: 'IMAGE_NAMESPACE', defaultValue: 'febe', description: 'Image namespace, default: febe')
+        persistentString(name: 'SONARQUBE_DOMAINE', defaultValue: 'sonarqube.roliyal.com', description: 'SonarQube domain, default: sonarqube.roliyal.com')
+
+    }
+    
+        // 构建流程定义
+        stages {
+            // 设置版本信息
+            stage('Version') {
+                steps {
+                    script {
+                        env.PATCH_VERSION = env.BUILD_NUMBER
+                        env.VERSION_NUMBER = "${env.MAJOR}.${env.MINOR}.${env.PATCH_VERSION}"
+                        echo "Current Version: ${env.VERSION_NUMBER}"
+                    }
+                }
+            }
+            
+        // 检出代码
+        stage('Checkout') {
+            steps {
+                cleanWs() // 清理工作空间
+                script {
+                    env.GIT_BRANCH = params.BRANCH
+                }
+                // 检出Git仓库
+                checkout scm: [
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${env.GIT_BRANCH}"]],
+                    userRemoteConfigs: [[url: params.GIT_REPOSITORY]],
+                    extensions: [[$class: 'CloneOption', depth: 1, noTags: false, reference: '', shallow: true]]
+                ]
+                echo '代码检出完成'
+            }
+        }
+        
+        // 检查目录和Dockerfile
+        stage('Check Directory') {
+            steps {
+                echo "Current working directory: ${pwd()}"
+                sh 'ls -la'
+                stash includes: '**', name: 'source-code' // 存储工作空间，包括Dockerfile和应用代码
+            }
+        }
+        stage('SonarQube analysis') {
+            agent { kubernetes { inheritFrom 'kanikoamd' } }
+            steps {
+                // 从之前的阶段恢复存储的源代码
+                unstash 'source-code'
+        
+                // 指定在特定容器中执行
+                container('kanikoamd') {
+                    // 设置SonarQube环境
+                    withSonarQubeEnv('sonar') {
+                        script {
+                            // 使用withCredentials从Jenkins凭据中获取SonarQube token
+                            withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
+                                // 执行sonar-scanner命令
+                                sh """
+                                sonar-scanner \
+                                  -Dsonar.projectKey=${JOB_NAME} \
+                                  -Dsonar.projectName='${env.IMAGE_NAMESPACE}' \
+                                  -Dsonar.projectVersion=${env.VERSION_TAG} \
+                                  -Dsonar.sources=. \
+                                  -Dsonar.exclusions='**/*_test.go,**/vendor/**' \
+                                  -Dsonar.language=go \
+                                  -Dsonar.host.url=http://${env.SONARQUBE_DOMAIN} \
+                                  -Dsonar.login=${SONAR_TOKEN} \
+                                  -Dsonar.projectBaseDir=${env.BUILD_DIRECTORY}
+                                """
+                            }
+                            
+                            // 使用script块处理HTTP请求和JSON解析
+                            withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
+                                def authHeader = "Basic " + ("${SONAR_TOKEN}:".bytes.encodeBase64().toString())
+                                def response = httpRequest(
+                                    url: "http://${env.SONARQUBE_DOMAIN}/api/qualitygates/project_status?projectKey=${JOB_NAME}",
+                                    customHeaders: [[name: 'Authorization', value: authHeader]],
+                                    consoleLogResponseBody: true,
+                                    acceptType: 'APPLICATION_JSON',
+                                    contentType: 'APPLICATION_JSON'
+                                )
+                                def json = readJSON text: response.content
+                                if (json.projectStatus.status != 'OK') {
+                                    error "SonarQube quality gate failed: ${json.projectStatus.status}"
+                                } else {
+                                    echo "Quality gate passed successfully."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
 
-| 比较项    | Nginx ingress                                                                                                                 | ALB ingress                                                                                                              | MSE ingress                                                                                                                                    |
-|--------|-------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------|
-| 特点     | 使用Nginx作为Ingress Controller，提供了丰富的功能，例如请求限速、基于主机名、路径或请求方法的路由、SSL/TLS终止等。它是Kubernetes社区最受欢迎的Ingress Controller之一，已经广泛应用于生产环境中。 | 是阿里云提供的一种Ingress Controller，它使用ALB作为Ingress Controller，可以利用ALB服务的高可用性和强大的负载均衡功能。ALB Ingress支持HTTP和HTTPS流量的路由，以及基于主机名、路径或请求方法的路由。 | 是阿里云云提供的一种Ingress Controller，它使用微服务引擎MSE网关作为Ingress Controller，可以提供HTTP、HTTPS和GRPC流量的路由。MSE Ingress支持基于主机名、路径、请求方法、请求头等多种条件的路由，同时也支持灰度发布和限流等功能。 | 
-| 典型应用场景 | 网关高度定制化；云原生应用金丝雀发布、蓝绿发布。                                                                                                      | 网关全托管、免运维；互联网应用七层高性能自动弹性；云原生应用金丝雀发布、蓝绿发布；超大QPS、超大并发连接。                                                                   | 网关全托管、免运维；南北向、东西向流量统一管理，微服务网关，全链路灰度；多个容器集群、PaaS平台、ECS服务共用一个网关实例；混合云、多数据中心、多业务域的内部互通；认证鉴权，灵活设置，安全防护要求高；超大流量、高并发业务。                              |
-| 架构     | 基于Nginx+Lua插件扩展。                                                                                                              | 基于阿里洛神云网络平台；基于CyberStar自研平台，支持自动弹性伸缩。                                                                                    | 基于开源Higress项目，控制面使用Istiod，数据面使用Envoy                                                                                                           |用户独享实例。|
-| 支持协议   | 支持HTTP和HTTPS协议；支持WebSocket、WSS和gRPC协议。                                                                                        | 支持HT支持HTTP和HTTPS协议；支持WebSocket、WSS和gRPC协议。                                                                               | 支持HTTP和HTTPS协议；支持WebSocket、WSS和gRPC协议；支持HTTP/HTTPS转Dubbo协议。                                                                                    |
-| 认证鉴权   | 支持Basic Auth认证方式；支持oAuth协议。                                                                                                   | 	支持TLS身份认证。                                                                                                              | 支持Basic Auth、oAuth、JWT、OIDC认证；集成阿里云IDaaS；支持自定义认证。                                                                                              |
-| 运维能力   | 自行维护组件；通过配置HPA进行扩缩容；需要主动配置规格进行调优。                                                                                             | 全托管、免运维；自动弹性，免配置支持超大容量；处理能力随业务峰值自动伸缩。                                                                                    | 全托管，免运维。                                                                                                                                       |
-| 安全     | 支持HTTPS协议；支持黑白名单功能。                                                                                                           | HTTPS（集成SSL）支持全链路HTTPS、SNI多证书、RSA、ECC双证、TLS 1.3协议和TLS算法套件选择；支持WAF防护（对接阿里云Web防火墙）；支持DDos防护（对接阿里云DDoS防护服务）；支持黑白名单功能。       | 支持全链路HTTPS、SNI多证书（集成SSL），可配置TLS版本；支持路由级WAF防护（对接阿里云Web防火墙）；支持路由级黑白名单功能。                                                                         |
-| 服务治理   | 服务发现支持K8s；服务灰度支持金丝雀发布；服务高可用支持限流。                                                                                              | 服务发现支持K8s；服务灰度支持金丝雀发布；服务高可用支持限流。                                                                                         | 服务发现支持K8s、Nacos、ZooKeeper、EDAS、SAE、DNS、固定IP；支持2个以上版本的金丝雀发布、标签路由，与MSE服务治理结合可实现全链路灰度发布；内置集成MSE服务治理中的Sentinel，支持限流、熔断、降级；服务测试支持服务Mock。            |
-| 扩展性    | 使用Lua脚本。| 使用AScript自研脚本。| 使用Wasm插件，实现多语言编写；使用Lua脚本。|                                                                                                                        
+        // 并行构建阶段
+        stage('Parallel Build') {
+            parallel {
+                // 为 amd64 构建镜像
+                stage('Build for amd64') {
+                    agent { kubernetes { inheritFrom 'kanikoamd' } }
+                    steps {
+                        unstash 'source-code' // 恢复之前存储的代码
+                        container('kanikoamd') {
+                            sh """
+                                kaniko \
+                                  --context ${env.WORKSPACE}/${params.BUILD_DIRECTORY} \
+                                  --dockerfile ${params.BUILD_DIRECTORY}/Dockerfile \
+                                  --destination ${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${VERSION_TAG}-amd64 \
+                                  --cache=true \
+                                  --cache-repo=${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/cache \
+                                  --skip-tls-verify \
+                                  --skip-unused-stages=true \
+                                  --custom-platform=linux/amd64 \
+                                  --build-arg BUILDKIT_INLINE_CACHE=1 \
+                                  --snapshot-mode=redo \
+                                  --log-format=text \
+                                  --verbosity=info
+                            """
+                        }
+                    }
+                }
+                // 为 arm64 构建镜像
+                stage('Build for arm64') {
+                    agent { kubernetes { inheritFrom 'kanikoarm' } }
+                    steps {
+                        unstash 'source-code'
+                        container('kanikoarm') {
+                            sh """
+                            /kaniko/executor \
+                              --context ${env.WORKSPACE}/${params.BUILD_DIRECTORY} \
+                              --dockerfile ${params.BUILD_DIRECTORY}/Dockerfile \
+                              --destination ${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${VERSION_TAG}-arm64 \
+                              --cache=true \
+                              --cache-repo=${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/cache \
+                              --skip-tls-verify \
+                              --skip-unused-stages=true \
+                              --custom-platform=linux/arm64 \
+                              --build-arg BUILDKIT_INLINE_CACHE=1 \
+                              --snapshot-mode=redo \
+                              --log-format=text \
+                              --verbosity=info
+                            """
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 推送多架构镜像 Manifest-tools
+        stage('Push Multi-Arch Manifest') {
+            agent { kubernetes { inheritFrom 'kanikoamd' } }
+            steps {
+                container('kanikoamd') {
+                    script {
+                        sh "manifest-tool --version "
+                        // 创建并推送多架构镜像的manifest
+                        sh """
+                            manifest-tool --insecure push from-args \\
+                            --platforms '${env.PLATFORMS}' \\
+                            --template '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}-ARCHVARIANT' \\
+                            --target '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'
+                        """
+                       // sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'"
+                    }
+                }
+            }
+        }
+        // 部署到 Kubernetes 集群
+        stage('Deploy to Kubernetes') {
+            agent { kubernetes { inheritFrom 'kanikoamd' } } 
+            steps {
+                unstash 'source-code' // 恢复之前存储的代码
+                container('kanikoamd') {
+                    script {
+                        withCredentials([file(credentialsId: 'k8s_token_uat', variable: 'KUBECONFIG')]) {
+                            // 执行 kubectl 命令
+                            sh "kaniko version" 
+                            sh "kubectl get node"
+                            env.FULL_IMAGE_URL = "${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}"
+                            
+                            sh """
+                            cd ${env.WORKSPACE}/${params.BUILD_DIRECTORY}
+                            cp *.yaml updated-deployment.yaml
+                            sed -i 's|image:.*|image: ${env.FULL_IMAGE_URL}|' updated-deployment.yaml
+                            kubectl apply -f updated-deployment.yaml
+                            """
+                        }
+                    }
+                }
+            }
+        }
+    
+    }
+}
+```
+#### 4.3 后端部署 ACK Jenkinsfile
+```groovy
+pipeline {
+    // 定义使用的 Jenkins agent 类型
+    agent { kubernetes { /* 配置省略 */ } }
+    
+    // 定义环境变量
+    environment {
+        GIT_BRANCH = 'main' // Git主分支的默认值
+        MAJOR_VERSION = 'v1' // 主版本号
+        MINOR_VERSION = '0'  // 次版本号
+        PLATFORMS = 'linux/amd64,linux/arm64' // 构建目标平台
+        MAJOR = "${params.MAJOR_VERSION ?: env.MAJOR_VERSION ?: '1'}" // 主版本号，允许通过参数覆盖
+        MINOR = "${params.MINOR_VERSION ?: env.MINOR_VERSION ?: '0'}" // 次版本号，允许通过参数覆盖
+        PATCH = "${env.BUILD_NUMBER}" // 构建号，用作修订版本号
+        VERSION_TAG = "${MAJOR}.${MINOR}.${PATCH}" // 组合版本标签
+        IMAGE_REGISTRY = "${params.IMAGE_REGISTRY}" // 镜像仓库地址
+        IMAGE_NAMESPACE = "${params.IMAGE_NAMESPACE}" // 镜像命名空间
+        IMAGE_ID = "${params.IMAGE_NAMESPACE}" // 镜像ID
+        SONARQUBE_DOMAIN = "${params.SONARQUBE_DOMAINE}" // Sonarqube 域名配置
+    }
+
+    // 触发条件
+    triggers { githubPush() }
+
+    // 参数定义
+    parameters {
+        persistentString(name: 'BRANCH', defaultValue: 'main', description: 'Initial default branch: main')
+        persistentChoice(name: 'PLATFORMS', choices: ['linux/amd64', 'linux/amd64,linux/arm64'], description: 'Target platforms, initial value: linux/amd64,linux/arm64')
+        persistentString(name: 'GIT_REPOSITORY', defaultValue: 'https://github.com/Roliyal/CROlordCodelibrary.git', description: 'Git repository URL, default: https://github.com/Roliyal/CROlordCodelibrary.git')
+        persistentString(name: 'MAJOR_VERSION', defaultValue: '1', description: 'Major version number, default: 1')
+        persistentString(name: 'MINOR_VERSION', defaultValue: '0', description: 'Minor version number, default: 0')
+        persistentString(name: 'BUILD_DIRECTORY', defaultValue: 'Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/go-guess-number', description: 'Build directory path, default path: Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation/go-guess-number')
+        persistentString(name: 'IMAGE_REGISTRY', defaultValue: 'crolord-registry-registry-vpc.cn-hongkong.cr.aliyuncs.com', description: 'Image registry address, default: crolord-registry-registry-vpc.cn-hongkong.cr.aliyuncs.com')
+        persistentString(name: 'IMAGE_NAMESPACE', defaultValue: 'febe', description: 'Image namespace, default: febe')
+        persistentString(name: 'SONARQUBE_DOMAINE', defaultValue: 'sonarqube.roliyal.com', description: 'SonarQube domain, default: sonarqube.roliyal.com')
+
+    }
+    
+        // 构建流程定义
+        stages {
+            // 设置版本信息
+            stage('Version') {
+                steps {
+                    script {
+                        env.PATCH_VERSION = env.BUILD_NUMBER
+                        env.VERSION_NUMBER = "${env.MAJOR}.${env.MINOR}.${env.PATCH_VERSION}"
+                        echo "Current Version: ${env.VERSION_NUMBER}"
+                    }
+                }
+            }
+            
+        // 检出代码
+        stage('Checkout') {
+            steps {
+                cleanWs() // 清理工作空间
+                script {
+                    env.GIT_BRANCH = params.BRANCH
+                }
+                // 检出Git仓库
+                checkout scm: [
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${env.GIT_BRANCH}"]],
+                    userRemoteConfigs: [[url: params.GIT_REPOSITORY]],
+                    extensions: [[$class: 'CloneOption', depth: 1, noTags: false, reference: '', shallow: true]]
+                ]
+                echo '代码检出完成'
+            }
+        }
+        
+        // 检查目录和Dockerfile
+        stage('Check Directory') {
+            steps {
+                echo "Current working directory: ${pwd()}"
+                sh 'ls -la'
+                stash includes: '**', name: 'source-code' // 存储工作空间，包括Dockerfile和应用代码
+            }
+        }
+        stage('SonarQube analysis') {
+            agent { kubernetes { inheritFrom 'kanikoamd' } }
+            steps {
+                // 从之前的阶段恢复存储的源代码
+                unstash 'source-code'
+        
+                // 指定在特定容器中执行
+                container('kanikoamd') {
+                    // 设置SonarQube环境
+                    withSonarQubeEnv('sonar') {
+                        script {
+                            // 使用withCredentials从Jenkins凭据中获取SonarQube token
+                            withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
+                                // 执行sonar-scanner命令
+                                sh """
+                                sonar-scanner \
+                                  -Dsonar.projectKey=${JOB_NAME} \
+                                  -Dsonar.projectName='${env.IMAGE_NAMESPACE}' \
+                                  -Dsonar.projectVersion=${env.VERSION_TAG} \
+                                  -Dsonar.sources=. \
+                                  -Dsonar.exclusions='**/*_test.go,**/vendor/**' \
+                                  -Dsonar.language=go \
+                                  -Dsonar.host.url=http://${env.SONARQUBE_DOMAIN} \
+                                  -Dsonar.login=${SONAR_TOKEN} \
+                                  -Dsonar.projectBaseDir=${env.BUILD_DIRECTORY}
+                                """
+                            }
+                            
+                            // 使用script块处理HTTP请求和JSON解析
+                            withCredentials([string(credentialsId: 'sonar', variable: 'SONAR_TOKEN')]) {
+                                def authHeader = "Basic " + ("${SONAR_TOKEN}:".bytes.encodeBase64().toString())
+                                def response = httpRequest(
+                                    url: "http://${env.SONARQUBE_DOMAIN}/api/qualitygates/project_status?projectKey=${JOB_NAME}",
+                                    customHeaders: [[name: 'Authorization', value: authHeader]],
+                                    consoleLogResponseBody: true,
+                                    acceptType: 'APPLICATION_JSON',
+                                    contentType: 'APPLICATION_JSON'
+                                )
+                                def json = readJSON text: response.content
+                                if (json.projectStatus.status != 'OK') {
+                                    error "SonarQube quality gate failed: ${json.projectStatus.status}"
+                                } else {
+                                    echo "Quality gate passed successfully."
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
 
-#### Nginx ingress：
-创建Nginx Ingress Controller服务  
+        // 并行构建阶段
+        stage('Parallel Build') {
+            parallel {
+                // 为 amd64 构建镜像
+                stage('Build for amd64') {
+                    agent { kubernetes { inheritFrom 'kanikoamd' } }
+                    steps {
+                        unstash 'source-code' // 恢复之前存储的代码
+                        container('kanikoamd') {
+                            sh """
+                                kaniko \
+                                  --context ${env.WORKSPACE}/${params.BUILD_DIRECTORY} \
+                                  --dockerfile ${params.BUILD_DIRECTORY}/Dockerfile \
+                                  --destination ${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${VERSION_TAG}-amd64 \
+                                  --cache=true \
+                                  --cache-repo=${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/cache \
+                                  --skip-tls-verify \
+                                  --skip-unused-stages=true \
+                                  --custom-platform=linux/amd64 \
+                                  --build-arg BUILDKIT_INLINE_CACHE=1 \
+                                  --snapshot-mode=redo \
+                                  --log-format=text \
+                                  --verbosity=info
+                            """
+                        }
+                    }
+                }
+                // 为 arm64 构建镜像
+                stage('Build for arm64') {
+                    agent { kubernetes { inheritFrom 'kanikoarm' } }
+                    steps {
+                        unstash 'source-code'
+                        container('kanikoarm') {
+                            sh """
+                            /kaniko/executor \
+                              --context ${env.WORKSPACE}/${params.BUILD_DIRECTORY} \
+                              --dockerfile ${params.BUILD_DIRECTORY}/Dockerfile \
+                              --destination ${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${VERSION_TAG}-arm64 \
+                              --cache=true \
+                              --cache-repo=${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/cache \
+                              --skip-tls-verify \
+                              --skip-unused-stages=true \
+                              --custom-platform=linux/arm64 \
+                              --build-arg BUILDKIT_INLINE_CACHE=1 \
+                              --snapshot-mode=redo \
+                              --log-format=text \
+                              --verbosity=info
+                            """
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 推送多架构镜像 Manifest-tools
+        stage('Push Multi-Arch Manifest') {
+            agent { kubernetes { inheritFrom 'kanikoamd' } }
+            steps {
+                container('kanikoamd') {
+                    script {
+                        sh "manifest-tool --version "
+                        // 创建并推送多架构镜像的manifest
+                        sh """
+                            manifest-tool --insecure push from-args \\
+                            --platforms '${env.PLATFORMS}' \\
+                            --template '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}-ARCHVARIANT' \\
+                            --target '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'
+                        """
+                       // sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'"
+                    }
+                }
+            }
+        }
+        // 部署到 Kubernetes 集群
+        stage('Deploy to Kubernetes') {
+            agent { kubernetes { inheritFrom 'kanikoamd' } } 
+            steps {
+                unstash 'source-code' // 恢复之前存储的代码
+                container('kanikoamd') {
+                    script {
+                        withCredentials([file(credentialsId: 'k8s_token_uat', variable: 'KUBECONFIG')]) {
+                            // 执行 kubectl 命令
+                            sh "kaniko version" 
+                            sh "kubectl get node"
+                            env.FULL_IMAGE_URL = "${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}"
+                            
+                            sh """
+                            cd ${env.WORKSPACE}/${params.BUILD_DIRECTORY}
+                            cp *.yaml updated-deployment.yaml
+                            sed -i 's|image:.*|image: ${env.FULL_IMAGE_URL}|' updated-deployment.yaml
+                            kubectl apply -f updated-deployment.yaml
+                            """
+                        }
+                    }
+                }
+            }
+        }
+    
+    }
+}
+```
 
-方式一：  
-创建ACK集群时，组件选择设置是否安装Ingress组件。默认Nginx Ingress。  
-若选择Nginx Ingress，则自动安装nginx Ingress组件。  
+### 5. Docker 镜像构建
 
-方式二：  
-若创建集群时未选择，则需要手动创建Nginx Ingress Controller  
-通过heml安装Nginx Ingress Controller：
-下载并解压Chart压缩包
-~~~shell
-$ wget https://aliacs-app-catalog.oss-cn-hangzhou.aliyuncs.com/charts-incubator/ack-ingress-nginx-v1-4.0.16.tgz
-$ tar -zxvf ack-ingress-nginx-v1-4.0.16.tgz
-~~~
-修改values.yaml文件  
+#### 5.1 go-guess-number/Dockerfile
 
-|参数| 描述                                               |
-|--------|--------------------------------------------------|
-|controller.image.repository| ingress-nginx镜像地址。                               |
-|controller.image.tag| ingress-nginx镜像版本                                |
-|controller.ingressClassResource.name| 设置Ingress Controller所对应的IngressClass的名称          |
-|controller.ingressClassResource.controllerValue| controller.ingressClassResource.controllerValue  |
-|controller.replicaCount| 设置该Ingress Controller Pod的副本数                    |
-|controller.service.external.enabled| 	是否开启公网SLB访问，不需要开启则设置为false                      |
-|controller.service.internal.enabled| 	是否开启私网SLB访问，需要开启则设置为true                        |
-|controller.kind| 设置IngressController部署形态，可选值：Deployment和DaemonSet |
-|service.beta.kubernetes.io/alibaba-cloud-loadbalancer-id| 如果需要使用已有的SLB，添加该参数，配置已有SLB的实例ID                  |
-|service.beta.kubernetes.io/alibaba-cloud-loadbalancer-force-override-listeners| true表示强制覆盖SLB监听                                  |
-values.yaml参考：
->CROlord-CloudNative\第2章 阿里云 kubernentes 应用部署\values.yaml  
+```Dockerfile
+# 第一阶段：构建 Go 服务器
+FROM golang:1.17-alpine AS go-build
+WORKDIR /go/src/app
+COPY go.mod .
+COPY go.sum .
+RUN go mod download
+COPY main.go .
+RUN CGO_ENABLED=0 GOOS=linux go build -o app .
 
-修改完values.yaml后打包helm chart包：
-~~~shell
-$ helm package ack-ingress-nginx-v1
-~~~
-执行结果参考：
-~~~shell
-$ ls
-ack-ingress-nginx-v1   ack-ingress-nginx-v1-4.0.16.tgz
-~~~
-使用helm创建nginx-ingress-controller:
-~~~shell
-$ helm install ack-ingress-nginx-v1 ack-ingress-nginx-v1-4.0.16.tgz
+# 第二阶段：构建最终镜像
+FROM gcr.io/distroless/static:nonroot
+COPY --from=go-build /go/src/app/ /app
+EXPOSE 8081
+USER nonroot:nonroot
+CMD ["/app"]
+```
 
-NAME: ack-ingress-nginx-v1
-LAST DEPLOYED: Thu Apr  6 16:06:46 2023
-NAMESPACE: default
-STATUS: deployed
-REVISION: 1
-TEST SUITE: None
-NOTES:
-The ingress-nginx controller has been installed.
-It may take a few minutes for the LoadBalancer IP to be available.
-You can watch the status by running 'kubectl --namespace default get services -o wide -w ack-ingress-nginx-v1-controller'
+#### 5.2 vue-go-guess-number/Dockerfile
 
-An example Ingress that makes use of the controller:
-  apiVersion: networking.k8s.io/v1
-  kind: Ingress
-  metadata:
-    name: example
-    namespace: foo
-    annotations:
-      kubernetes.io/ingress.class: 
-  spec:
-    rules:
-      - host: www.example.com
-        http:
-          paths:
-            - backend:
-                service:
-                  name: exampleService
-                  port:
-                    number: 80
-              path: /
-    # This section is only required if TLS is to be enabled for the Ingress
-    tls:
-      - hosts:
-        - www.example.com
-        secretName: example-tls
+```Dockerfile
+# 使用 Node.js 的 Docker 镜像
+FROM node:latest AS vue-build
 
-If TLS is enabled for the Ingress, a Secret containing the certificate and key must also be provided:
+WORKDIR /app
 
-  apiVersion: v1
-  kind: Secret
-  metadata:
-    name: example-tls
-    namespace: foo
-  data:
-    tls.crt: <base64 encoded cert>
-    tls.key: <base64 encoded key>
-  type: kubernetes.io/tls
-~~~
-查看ack-ingress-nginx-v1-controller：
-~~~shell
-$ kubectl describe  svc ack-ingress-nginx-v1-controller
-Name:                     ack-ingress-nginx-v1-controller
-Namespace:                default
-Labels:                   app.kubernetes.io/component=controller
-                          app.kubernetes.io/instance=ack-ingress-nginx-v1
-                          app.kubernetes.io/managed-by=Helm
-                          app.kubernetes.io/name=ack-ingress-nginx-v1
-                          app.kubernetes.io/version=v1.2.1-aliyun.1
-                          helm.sh/chart=ack-ingress-nginx-v1-4.0.16
-                          service.beta.kubernetes.io/hash=aa40771efacafee16369261d8f726a4a2ddb3973cdc693efc9343a91
-                          service.k8s.alibaba/loadbalancer-id=lb-j6cd99urbi9fvj4gab69m
-Annotations:              meta.helm.sh/release-name: ack-ingress-nginx-v1
-                          meta.helm.sh/release-namespace: default
-                          service.beta.kubernetes.io/alibaba-cloud-loadbalancer-force-override-listeners: true
-                          service.beta.kubernetes.io/alibaba-cloud-loadbalancer-id: lb-j6cd99urbi9fvj4gab69m
-Selector:                 app.kubernetes.io/component=controller,app.kubernetes.io/instance=ack-ingress-nginx-v1,app.kubernetes.io/name=ack-ingress-nginx-v1
-Type:                     LoadBalancer
-IP Family Policy:         SingleStack
-IP Families:              IPv4
-IP:                       192.168.197.246
-IPs:                      192.168.197.246
-LoadBalancer Ingress:     10.0.0.110
-Port:                     http  80/TCP
-TargetPort:               80/TCP
-NodePort:                 http  32412/TCP
-Endpoints:                10.0.1.106:80,10.0.1.107:80
-Port:                     https  443/TCP
-TargetPort:               443/TCP
-NodePort:                 https  30532/TCP
-Endpoints:                10.0.1.106:443,10.0.1.107:443
-Session Affinity:         None
-External Traffic Policy:  Local
-HealthCheck NodePort:     30387
-Events:
-  Type    Reason                   Age                From                Message
-  ----    ------                   ----               ----                -------
-  Normal  UnAvailableLoadBalancer  31s (x4 over 34s)  service-controller  There are no available nodes for LoadBalancer
-  Normal  EnsuredLoadBalancer      16s (x4 over 31s)  service-controller  Ensured load balancer [lb-j6cd99urbi9fvj4gab69m]
-~~~
+COPY package*.json ./
+RUN npm cache clean --force
+RUN npm install --force
+
+COPY . .
+RUN npm run build
+
+FROM nginx:1.21-alpine
+
+COPY --from=vue-build /app/dist /usr/share/nginx/html
+
+EXPOSE 8080
+
+CMD ["nginx", "-g", "daemon off;"]
+
+```
+
+### 6. Kubernetes 部署配置
+
+#### 6.1 backend-deployment.yaml
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-go-backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app-go-backend
+  template:
+    metadata:
+      labels:
+        app: app-go-backend
+    spec:
+      containers:
+        - name: app-go-backend
+          image: registry-vpc.cn-hongkong.aliyuncs.com/crolord_acr_personal/febe:backendV2
+          ports:
+            - containerPort: 8081
+          resources:
+            limits:
+              cpu: 500m
+              memory: 256Mi
+            requests:
+              cpu: 250m
+              memory: 128Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-go-backend-service
+spec:
+  selector:
+    app: app-go-backend
+  ports:
+    - protocol: TCP
+      port: 8081
+      targetPort: 8081
+  type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-go-ingress
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: app-vue-front-service
+                port:
+                  number: 8080
+
+
+```
+
+#### 6.2 frontend-deployment.yaml
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-vue-front
+  labels:
+    app: app-vue-front
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: app-vue-front
+  template:
+    metadata:
+      labels:
+        app: app-vue-front
+    spec:
+      containers:
+        - name: app-vue-front
+          image: registry-vpc.cn-hongkong.aliyuncs.com/crolord_acr_personal/febe:frontv2
+          ports:
+            - containerPort: 8080
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: app-vue-front-nginx-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-vue-front-service
+spec:
+  selector:
+    app: app-vue-front
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-vue-front-nginx-config
+data:
+  default.conf: |
+    server {
+      listen 8080;
+      server_name localhost;
+
+      location / {
+        root /usr/share/nginx/html;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+      }
+      location /check-guess {
+        proxy_pass http://app-go-backend-service.cicd.svc.cluster.local:8081;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 300s;
+        proxy_connect_timeout 300s;
+      }
+    }
+
+```
+
+### 7. 总结
+
+通过本文的步骤，我们实现了一个基于 GO 和 VUE 的单体应用的前后端分离，并利用 Jenkins Pipeline 自动化部署到阿里云的 Kubernetes 服务（ACK）环境中。我们还集成了 Trivy 和 SonarQube 进行安全和质量检测，并配置了多架构构建。希望这些内容能帮助你在实际项目中实现类似的部署流程。
