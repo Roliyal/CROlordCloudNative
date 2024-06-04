@@ -230,7 +230,8 @@
        done
       ```
          3.  查看脚本执行结果
-![dns.png](../resource/images/dns.png)
+
+      ![dns.png](../resource/images/dns.png)
          4. (可选)执行dig命令验证，对比Query time字段结果，查询是否满足DNS优化需求
       ```shell
       kubectl exec -it dns-test-default-a -n default-a -- dig kubernetes.default.svc.cluster.local
