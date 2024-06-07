@@ -88,7 +88,8 @@
 - **功能**：刷新 CDN 缓存，以确保最新版本的资源可以及时生效。
 - **操作**：
     - 下载并执行 `cdn.go` 脚本。
-    - 使用 OSS 的 Access Key 和 Secret 进行 CDN 刷新。
+    - 使用 OSS 的 Access Key 和 Secret 进行 CDN 刷新，
+    - **注本文AK/SK信息均为RAM子账户统一权限，如果需要分别处理，需要创建多个AK/SK。**
 
 ##### 3. `Main Pipeline`
 
@@ -796,7 +797,7 @@ pipeline {
                             --template '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}-ARCHVARIANT' \\
                             --target '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'
                         """
-                       // sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'"
+                        sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'"
                     }
                 }
             }
@@ -904,7 +905,7 @@ pipeline {
             steps {
                 echo "Current working directory: ${pwd()}"
                 sh 'ls -la'
-                stash includes: '**', name: 'source-code' // 存储工作空间，包括Dockerfile和应用代码
+                stash includes: '**', name: 'source-code' // 存储工作空间
             }
         }
         stage('SonarQube analysis') {
@@ -1027,7 +1028,7 @@ pipeline {
                             --template '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}-ARCHVARIANT' \\
                             --target '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'
                         """
-                       // sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'"
+                        sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'"
                     }
                 }
             }
@@ -1272,7 +1273,7 @@ data:
 ```
 ### 7. 验证部署
 #### 7.1 VUE 前端部署至 OSS+CDN 方式以及部署ack环境
-   - **本文网关地址为 MSE ingress 地址**
+   - **本文网关地址为 MSE ingress 地址,建议将该地址解析域名格式，本文因域名原因临时使用ip模式**
    - **将不通前端资源部署对应环境需要修改前端路由地址如图所示**
 ![img.png](../resource/images/vue-config.png)
    - **OSS 部署结果如图所示**
