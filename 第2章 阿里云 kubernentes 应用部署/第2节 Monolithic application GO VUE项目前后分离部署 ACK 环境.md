@@ -19,6 +19,8 @@
 - 阿里云 ACK 集群集群令牌获取，获取方式登录容器服务 ACK，选择目标集群，连接信息，复制 Kubeconfig 令牌信息，用于部署应用到目标集群。
 - 阿里云 ACR 账户信息获取，使用 Docker 登录镜像仓库后，将 `/root/.docker/config.json`配置信息配置为secret凭据，用于 kaniko 构建镜像使用。
 - SonarQube Server 登录 Sonarqube，在account选项/security，创建Generate Tokens，用于配置 jenkins 扫描代码。
+- 项目部署代码库地址： [FEBEseparation](https://github.com/Roliyal/CROlordCodelibrary/tree/main/Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation)
+- 项目部署脚本库地址：[CROLordSharedLibraryCode](https://github.com/Roliyal/CROLordSharedLibraryCode)
 
 ### 3. 项目结构
 
@@ -1141,7 +1143,7 @@ kind: Deployment
 metadata:
    name: app-go-backend
 spec:
-   replicas: 3
+   replicas: 2
    selector:
       matchLabels:
          app: app-go-backend
@@ -1152,7 +1154,7 @@ spec:
       spec:
          containers:
             - name: app-go-backend
-              image: registry-vpc.cn-hongkong.aliyuncs.com/crolord_acr_personal/febe:backendV2
+              image: registry-vpc.cn-hongkong.aliyuncs.com/crolord_acr_personal/febe:backendV2 
               ports:
                  - containerPort: 8081
               resources:
