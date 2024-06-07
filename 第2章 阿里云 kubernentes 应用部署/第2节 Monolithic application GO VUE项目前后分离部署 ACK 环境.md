@@ -1194,6 +1194,17 @@ spec:
                       name: app-vue-front-service
                       port:
                          number: 8080
+#   rules:  如果需要配置oss访问需要配置如下ingress 资源
+#      - host: ossvue.roliyal.com
+#        http:
+#           paths:
+#              - backend:
+#                   service:
+#                      name: app-go-backend-service
+#                      port:
+#                         number: 8081
+#                path: /check-guess
+#                pathType: Prefix                         
 
 
 ```
