@@ -1271,7 +1271,7 @@ data:
 
 ```
 ### 7. 验证部署
-#### 7.1 VUE 前端部署至 OSS+CDN 方式
+#### 7.1 VUE 前端部署至 OSS+CDN 方式以及部署ack环境
    - **本文网关地址为 MSE ingress 地址**
    - **将不通前端资源部署对应环境需要修改前端路由地址如图所示**
 ![img.png](../resource/images/vue-config.png)
