@@ -127,7 +127,7 @@
          }
 
          instance_id=$(prompt "请输入企业版实例ID（个人版请留空）" "")
-         watch_namespace=$(prompt "请输入watch-namespace" "default")
+         watch_namespace=$(prompt "请输入watch-namespace或者输入 all" "default")
          notify_email=$(prompt "请输入通知邮箱（如果不需要请留空）" "")
          service_account=$(prompt "请输入service-account" "default")
          enable_webhook=$(prompt "是否启用webhook能力（true/false，默认false）" "false")
@@ -163,7 +163,7 @@
          echo "ConfigMap 'acr-configuration' 更新成功。"
          ```
          **2.1执行结果示意图**
-         ![update-configmap-acr.png](../resource/images/update-configmap-acr.png)
+         ![update-configmap-acr.png]![img.png](../第1章%20始：工具链/resource/img.png)(../resource/images/update-configmap-acr.png)
       3. 配置完成后，可通过ack控制台验证镜像是否拉取成功，如有问题可以提issue咨询。
   
    2. 配置NodeLocal DNSCache 缓存代理来提高集群DNS性能

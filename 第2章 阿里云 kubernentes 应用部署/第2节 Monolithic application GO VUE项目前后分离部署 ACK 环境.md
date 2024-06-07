@@ -1066,21 +1066,43 @@ pipeline {
 #### 5.1 go-guess-number/Dockerfile
 
 ```Dockerfile
-# 第一阶段：构建 Go 服务器
-FROM golang:1.17-alpine AS go-build
-WORKDIR /go/src/app
-COPY go.mod .
-COPY go.sum .
-RUN go mod download
-COPY main.go .
-RUN CGO_ENABLED=0 GOOS=linux go build -o app .
+# 使用官方的 Go 1.20 镜像进行构建
+FROM golang:latest  AS builder
 
-# 第二阶段：构建最终镜像
-FROM gcr.io/distroless/static:nonroot
-COPY --from=go-build /go/src/app/ /app
+WORKDIR /app
+
+# 复制 go.mod 和 go.sum 文件，并下载依赖项
+COPY go.mod go.sum ./
+RUN go mod download
+
+# 复制所有源代码
+COPY . .
+
+# 构建 Go 程序
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o main .
+
+# 使用官方的 Alpine 镜像作为运行环境
+FROM alpine
+
+# 添加非 root 用户
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+WORKDIR /app
+
+# 从构建阶段复制构建好的 Go 二进制文件
+COPY --from=builder /app/main /app/main
+
+RUN mkdir -p /app/log && chown -R appuser:appgroup /app/log
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
 EXPOSE 8081
-USER nonroot:nonroot
-CMD ["/app"]
+
+HEALTHCHECK --interval=60s --timeout=5s --start-period=5s --retries=3 CMD ["/app/main", "check"]
+
+ENTRYPOINT ["/app/main"]
+
 ```
 
 #### 5.2 vue-go-guess-number/Dockerfile
@@ -1116,60 +1138,61 @@ CMD ["nginx", "-g", "daemon off;"]
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: app-go-backend
+   name: app-go-backend
 spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: app-go-backend
-  template:
-    metadata:
-      labels:
-        app: app-go-backend
-    spec:
-      containers:
-        - name: app-go-backend
-          image: registry-vpc.cn-hongkong.aliyuncs.com/crolord_acr_personal/febe:backendV2
-          ports:
-            - containerPort: 8081
-          resources:
-            limits:
-              cpu: 500m
-              memory: 256Mi
-            requests:
-              cpu: 250m
-              memory: 128Mi
+   replicas: 3
+   selector:
+      matchLabels:
+         app: app-go-backend
+   template:
+      metadata:
+         labels:
+            app: app-go-backend
+      spec:
+         containers:
+            - name: app-go-backend
+              image: registry-vpc.cn-hongkong.aliyuncs.com/crolord_acr_personal/febe:backendV2
+              ports:
+                 - containerPort: 8081
+              resources:
+                 limits:
+                    cpu: 500m
+                    memory: 256Mi
+                 requests:
+                    cpu: 250m
+                    memory: 128Mi
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: app-go-backend-service
+   name: app-go-backend-service
 spec:
-  selector:
-    app: app-go-backend
-  ports:
-    - protocol: TCP
-      port: 8081
-      targetPort: 8081
-  type: ClusterIP
+   selector:
+      app: app-go-backend
+   ports:
+      - protocol: TCP
+        port: 8081
+        targetPort: 8081
+   type: ClusterIP
 
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: app-go-ingress
+   name: app-go-ingress
 spec:
-  rules:
-    - http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: app-vue-front-service
-                port:
-                  number: 8080
+   ingressClassName: mse
+   rules:
+      - http:
+           paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                   service:
+                      name: app-vue-front-service
+                      port:
+                         number: 8080
 
 
 ```
@@ -1247,7 +1270,15 @@ data:
     }
 
 ```
-
-### 7. 总结
+### 7. 验证部署
+#### 7.1 VUE 前端部署至 OSS+CDN 方式
+   - **本文网关地址为 MSE ingress 地址**
+   - **将不通前端资源部署对应环境需要修改前端路由地址如图所示**
+![img.png](../resource/images/vue-config.png)
+   - **OSS 部署结果如图所示**
+![img.png](../resource/images/oss-vue.png)
+   - **ACK部署前端结果如图所示**
+![img.png](../resource/images/k8s-deploy-vue.png)
+### 8. 总结
 
 通过本文的步骤，我们实现了一个基于 GO 和 VUE 的单体应用的前后端分离，并利用 Jenkins Pipeline 自动化部署到阿里云的 Kubernetes 服务（ACK）环境中。我们还集成了 Trivy 和 SonarQube 进行安全和质量检测，并配置了多架构构建。希望这些内容能帮助你在实际项目中实现类似的部署流程，如果在部署过程中遇见问题建议您添加钉钉群咨询（CROLord 开源项目交流01群 DingTalk Group Number: 83210005055）。
