@@ -16,14 +16,69 @@
 
 #### 2.2 基本配置项合集说明
 
-- **阿里云 ACK 集群令牌获取**：
-    - 登录阿里云控制台，进入容器服务 ACK 页面，选择目标集群，点击连接信息，复制 Kubeconfig 令牌信息。
+- 阿里云 ACK 集群集群令牌获取，获取方式登录容器服务 ACK，选择目标集群，连接信息，复制 Kubeconfig 令牌信息，用于部署应用到目标集群。
+- 阿里云 ACR 账户信息获取，使用 Docker 登录镜像仓库后，将 `/root/.docker/config.json`配置信息配置为secret凭据，用于 kaniko 构建镜像使用。
+- SonarQube Server 登录 Sonarqube，在account选项/security，创建Generate Tokens，用于配置 jenkins 扫描代码。
+- 项目部署代码库地址： [FEBEseparation](https://github.com/Roliyal/CROlordCodelibrary/tree/main/Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation)
+- 项目部署脚本库地址：[CROLordSharedLibraryCode](https://github.com/Roliyal/CROLordSharedLibraryCode)
 
-- **阿里云 ACR 账户信息获取**：
-    - 使用 Docker 登录阿里云容器镜像服务 (ACR) 后，将 `/root/.docker/config.json` 配置信息配置为 Jenkins 的 secret 凭据，用于 Kaniko 构建镜像使用。
+##### 2.2.1 部署参数
 
-- **SonarQube Token 获取**：
-    - 登录 SonarQube，进入 Account 选项下的 Security 页面，创建并生成一个 Token，用于 Jenkins 中的代码扫描配置。
+以下是用于 Jenkins Pipeline 部署的参数配置说明，包括每个参数的用途和默认值：
+
+1. **BRANCH**：
+   - **描述**：初始默认分支
+   - **默认值**：`main`
+   - **类型**：字符串
+   - **用途**：指定要构建的 Git 分支。
+
+2. **PLATFORMS**：
+   - **描述**：目标平台，初始值为 `linux/amd64,linux/arm64`
+   - **默认值**：`linux/amd64,linux/arm64`
+   - **类型**：选择列表
+   - **用途**：指定要构建的目标平台架构。
+
+3. **GIT_REPOSITORY**：
+   - **描述**：Git 仓库 URL，默认值为 `https://github.com/Roliyal/CROlordCodelibrary.git`
+   - **默认值**：`https://github.com/Roliyal/CROlordCodelibrary.git`
+   - **类型**：字符串
+   - **用途**：指定要克隆和构建的 Git 仓库地址。
+
+4. **MAJOR_VERSION**：
+   - **描述**：主版本号，默认值为 `1`
+   - **默认值**：`1`
+   - **类型**：字符串
+   - **用途**：用于标识版本控制的主版本号。
+
+5. **MINOR_VERSION**：
+   - **描述**：次版本号，默认值为 `0`
+   - **默认值**：`0`
+   - **类型**：字符串
+   - **用途**：用于标识版本控制的次版本号。
+
+6. **BUILD_DIRECTORY**：
+   - **描述**：构建目录路径，默认路径为 `Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/Microservice/front-guess`
+   - **默认值**：`Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/Microservice/front-guess`
+   - **类型**：字符串
+   - **用途**：指定要构建的项目的目录路径。
+
+7. **IMAGE_REGISTRY**：
+   - **描述**：镜像仓库地址，默认值为 `crolord-uat-registry-vpc.cn-hongkong.cr.aliyuncs.com`
+   - **默认值**：`crolord-uat-registry-vpc.cn-hongkong.cr.aliyuncs.com`
+   - **类型**：字符串
+   - **用途**：指定要推送镜像的阿里云容器镜像服务地址。
+
+8. **IMAGE_NAMESPACE**：
+   - **描述**：镜像命名空间，默认值为 `micro`
+   - **默认值**：`micro`
+   - **类型**：字符串
+   - **用途**：指定镜像在仓库中的命名空间。
+
+9. **SONARQUBE_DOMAIN**：
+   - **描述**：SonarQube 域名，默认值为 `sonarqube.roliyal.com`
+   - **默认值**：`sonarqube.roliyal.com`
+   - **类型**：字符串
+   - **用途**：指定 SonarQube 服务器的地址，用于代码质量分析。
 
 ### 3. 配置说明
 
@@ -786,65 +841,7 @@ spec:
 
 ```
 
-### 8. 部署参数
-
-以下是用于 Jenkins Pipeline 部署的参数配置说明，包括每个参数的用途和默认值：
-
-1. **BRANCH**：
-    - **描述**：初始默认分支
-    - **默认值**：`main`
-    - **类型**：字符串
-    - **用途**：指定要构建的 Git 分支。
-
-2. **PLATFORMS**：
-    - **描述**：目标平台，初始值为 `linux/amd64,linux/arm64`
-    - **默认值**：`linux/amd64,linux/arm64`
-    - **类型**：选择列表
-    - **用途**：指定要构建的目标平台架构。
-
-3. **GIT_REPOSITORY**：
-    - **描述**：Git 仓库 URL，默认值为 `https://github.com/Roliyal/CROlordCodelibrary.git`
-    - **默认值**：`https://github.com/Roliyal/CROlordCodelibrary.git`
-    - **类型**：字符串
-    - **用途**：指定要克隆和构建的 Git 仓库地址。
-
-4. **MAJOR_VERSION**：
-    - **描述**：主版本号，默认值为 `1`
-    - **默认值**：`1`
-    - **类型**：字符串
-    - **用途**：用于标识版本控制的主版本号。
-
-5. **MINOR_VERSION**：
-    - **描述**：次版本号，默认值为 `0`
-    - **默认值**：`0`
-    - **类型**：字符串
-    - **用途**：用于标识版本控制的次版本号。
-
-6. **BUILD_DIRECTORY**：
-    - **描述**：构建目录路径，默认路径为 `Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/Microservice/front-guess`
-    - **默认值**：`Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/Microservice/front-guess`
-    - **类型**：字符串
-    - **用途**：指定要构建的项目的目录路径。
-
-7. **IMAGE_REGISTRY**：
-    - **描述**：镜像仓库地址，默认值为 `crolord-uat-registry-vpc.cn-hongkong.cr.aliyuncs.com`
-    - **默认值**：`crolord-uat-registry-vpc.cn-hongkong.cr.aliyuncs.com`
-    - **类型**：字符串
-    - **用途**：指定要推送镜像的阿里云容器镜像服务地址。
-
-8. **IMAGE_NAMESPACE**：
-    - **描述**：镜像命名空间，默认值为 `micro`
-    - **默认值**：`micro`
-    - **类型**：字符串
-    - **用途**：指定镜像在仓库中的命名空间。
-
-9. **SONARQUBE_DOMAIN**：
-    - **描述**：SonarQube 域名，默认值为 `sonarqube.roliyal.com`
-    - **默认值**：`sonarqube.roliyal.com`
-    - **类型**：字符串
-    - **用途**：指定 SonarQube 服务器的地址，用于代码质量分析。
-
-### 9. 结果验证
+### 8. 结果验证
 
 1. **检查 Jenkins 控制台输出**：
     - 确认所有阶段成功执行，无错误信息。
@@ -856,10 +853,38 @@ spec:
    kubectl get services
    kubectl get deployments
    ```
-
+    - 预期输出
+   ```bash
+   [root@CROLord ~]# kubectl get deployments -n cicd
+   NAME              READY   UP-TO-DATE   AVAILABLE   AGE
+   app-go-backend    2/2     2            2           6d
+   app-vue-front     3/3     3            3           6d
+   micro-go-game     1/1     1            1           16h
+   micro-go-login    1/1     1            1           17h
+   micro-go-score    1/1     1            1           16h
+   micro-vue-front   2/2     2            2           17h
+   traefik           1/1     1            1           16h
+   [root@CROLord ~]# kubectl get deployments -n cicd |grep micro
+   micro-go-game     1/1     1            1           16h
+   micro-go-login    1/1     1            1           17h
+   micro-go-score    1/1     1            1           16h
+   micro-vue-front   2/2     2            2           17h
+   [root@CROLord ~]# kubectl get services -n cicd  |grep micro
+   micro-go-game                   ClusterIP      192.168.5.27      <none>          8084/TCP       16h
+   micro-go-login                  ClusterIP      192.168.73.37     <none>          8083/TCP       17h
+   micro-go-score                  ClusterIP      192.168.164.67    <none>          8085/TCP       16h
+   micro-vue-front-service         ClusterIP      192.168.95.117    <none>          8080/TCP       19h
+   [root@CROLord ~]# kubectl get deployments -n cicd   |grep micro
+   micro-go-game     1/1     1            1           16h
+   micro-go-login    1/1     1            1           17h
+   micro-go-score    1/1     1            1           16h
+   micro-vue-front   2/2     2            2           17h
+   [root@CROLord ~]#
+   ```
 3. **访问前端服务**：
-    - 通过负载均衡器的 IP 地址访问前端应用，验证应用是否正常运行。
-
-### 10. 总结
+    - 通过 MSE 负载均衡器的 IP 地址访问前端应用，验证应用是否正常运行。
+![img.png](../resource/images/micro-game.png)
+![img.png](../resource/images/micro-score.png)
+### 9. 总结
 
 通过 Jenkins 配置持续集成和部署流水线，可以实现自动化构建、测试和部署微服务应用到阿里云 Kubernetes 集群。本文档详细介绍了从环境准备、工具选择到实际配置和验证的完整过程。根据具体需求，您可以进一步扩展和优化流水线配置，实现更复杂的 CI/CD 流程。
