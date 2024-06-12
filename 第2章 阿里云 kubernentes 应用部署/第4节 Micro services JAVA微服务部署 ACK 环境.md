@@ -125,7 +125,7 @@ data:
 ~~~
 执行命令创建Deployment和Service
 ~~~shell
-kubectl apply -f vue-go-number.yaml .  
+kubectl apply -f vue-go-number.dingding .  
 ~~~  
 标准输出：
 ~~~shell

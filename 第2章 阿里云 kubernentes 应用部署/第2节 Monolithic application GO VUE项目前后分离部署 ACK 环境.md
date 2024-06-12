@@ -22,6 +22,64 @@
 - 项目部署代码库地址： [FEBEseparation](https://github.com/Roliyal/CROlordCodelibrary/tree/main/Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation)
 - 项目部署脚本库地址：[CROLordSharedLibraryCode](https://github.com/Roliyal/CROLordSharedLibraryCode)
 
+##### 2.2.1 部署参数
+
+以下是用于 Jenkins Pipeline 部署的参数配置说明，包括每个参数的用途和默认值：
+
+1. **BRANCH**：
+   - **描述**：初始默认分支
+   - **默认值**：`main`
+   - **类型**：字符串
+   - **用途**：指定要构建的 Git 分支。
+
+2. **PLATFORMS**：
+   - **描述**：目标平台，初始值为 `linux/amd64,linux/arm64`
+   - **默认值**：`linux/amd64,linux/arm64`
+   - **类型**：选择列表
+   - **用途**：指定要构建的目标平台架构。
+
+3. **GIT_REPOSITORY**：
+   - **描述**：Git 仓库 URL，默认值为 `https://github.com/Roliyal/CROlordCodelibrary.git`
+   - **默认值**：`https://github.com/Roliyal/CROlordCodelibrary.git`
+   - **类型**：字符串
+   - **用途**：指定要克隆和构建的 Git 仓库地址。
+
+4. **MAJOR_VERSION**：
+   - **描述**：主版本号，默认值为 `1`
+   - **默认值**：`1`
+   - **类型**：字符串
+   - **用途**：用于标识版本控制的主版本号。
+
+5. **MINOR_VERSION**：
+   - **描述**：次版本号，默认值为 `0`
+   - **默认值**：`0`
+   - **类型**：字符串
+   - **用途**：用于标识版本控制的次版本号。
+
+6. **BUILD_DIRECTORY**：
+   - **描述**：构建目录路径，默认路径为 `Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/Microservice/front-guess`
+   - **默认值**：`Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/Microservice/front-guess`
+   - **类型**：字符串
+   - **用途**：指定要构建的项目的目录路径。
+
+7. **IMAGE_REGISTRY**：
+   - **描述**：镜像仓库地址，默认值为 `crolord-uat-registry-vpc.cn-hongkong.cr.aliyuncs.com`
+   - **默认值**：`crolord-uat-registry-vpc.cn-hongkong.cr.aliyuncs.com`
+   - **类型**：字符串
+   - **用途**：指定要推送镜像的阿里云容器镜像服务地址。
+
+8. **IMAGE_NAMESPACE**：
+   - **描述**：镜像命名空间，默认值为 `micro`
+   - **默认值**：`micro`
+   - **类型**：字符串
+   - **用途**：指定镜像在仓库中的命名空间。
+
+9. **SONARQUBE_DOMAIN**：
+   - **描述**：SonarQube 域名，默认值为 `sonarqube.roliyal.com`
+   - **默认值**：`sonarqube.roliyal.com`
+   - **类型**：字符串
+   - **用途**：指定 SonarQube 服务器的地址，用于代码质量分析。
+
 ### 3. 项目结构
 
 ```plaintext

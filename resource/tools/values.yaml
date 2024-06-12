@@ -783,7 +783,7 @@ defaultBackend:
     registry: k8s.gcr.io
     image: defaultbackend-amd64
     # for backwards compatibility consider setting the full image url via the repository value below
-    # use *either* current default registry/image or repository format or installing chart by providing the values.yaml will fail
+    # use *either* current default registry/image or repository format or installing chart by providing the values.dingding will fail
     # repository:
     tag: "1.5"
     pullPolicy: IfNotPresent

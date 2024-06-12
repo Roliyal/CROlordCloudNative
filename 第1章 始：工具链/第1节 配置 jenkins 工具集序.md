@@ -271,8 +271,8 @@ secret/kaniko-secret created
 ###### 配置示例，用于初始化创建 secret ，此示例为 Jenkins credentials 全局凭据信息，相关信息根据实际情况配置
 ```shell
 kubectl create secret generic secret-credentials -n cicd \
-  --from-file=k8s-prod-config=/root/opt/crolord_prod.yaml  \
-  --from-file=k8s-uat-config=/root/opt/crolord-ack-uat.yaml  \
+  --from-file=k8s-prod-config=/root/opt/crolord_prod.dingding  \
+  --from-file=k8s-uat-config=/root/opt/crolord-ack-uat.dingding  \
   --from-file=github-token=/root/opt/github.txt \
   --from-literal=acr-username=ZWJAasdasda2NTkyMQ== \
   --from-literal=acr-password=Q1JzxczxcxMjM= \
@@ -303,14 +303,14 @@ kubectl patch secret secret-credentials -n cicd --patch='
 ```shell
 [root@CROLord opt]# ll
 total 32
--rw-r--r-- 1 root root 8002 Mar 15 20:58 crolord_prod.yaml
--rw-r--r-- 1 root root 8002 Mar 15 20:57 crolord_uat.yaml
+-rw-r--r-- 1 root root 8002 Mar 15 20:58 crolord_prod.dingding
+-rw-r--r-- 1 root root 8002 Mar 15 20:57 crolord_uat.dingding
 -rw-r--r-- 1 root root   22 Mar 15 21:00 github.txt
 -rw-r--r-- 1 root root 4097 Feb 28 17:46 jenkins.roliyal.com_bundle.crt
 -rw-r--r-- 1 root root 1706 Feb 28 17:46 jenkins.roliyal.com.key
 [root@CROLord opt]# kubectl create secret generic secret-credentials -n cicd \
->   --from-file=k8s-prod-config=/root/opt/crolord_prod.yaml  \
->   --from-file=k8s-uat-config=/root/opt/crolord_uat.yaml \
+>   --from-file=k8s-prod-config=/root/opt/crolord_prod.dingding  \
+>   --from-file=k8s-uat-config=/root/opt/crolord_uat.dingding \
 >   --from-file=github-token=/root/opt/github.txt \
 >   --from-literal=acr-username=ZW***********yMQ== \
 >   --from-literal=acr-password=Q1******xMjM=
@@ -683,7 +683,7 @@ helm -n cicd install jenkins jenkins/jenkins -f jenkins-values.yaml
 
 示例
 ```shell
-helm -n cicd install    jenkins jenkins/jenkins -f /opt/tls/jenkins-values.yaml
+helm -n cicd install    jenkins jenkins/jenkins -f /opt/tls/jenkins-values.dingding
 ```
 
 4. 安装完成后，可以使用以下命令查看 Jenkins 的状态，以及配置 jenkins 初始化
@@ -717,7 +717,7 @@ helm install sonarqube sonarqube/sonarqube --version <chart_version> --namespace
    Helm图表的安装和配置可以通过修改values.yaml文件来定制。你可以从图表仓库中下载默认的values.yaml文件，进行修改：
 
 ```shell
-helm show values sonarqube/sonarqube > values.yaml
+helm show values sonarqube/sonarqube > values.dingding
 ```
 这会将当前图表的默认配置输出到values.yaml文件中。然后，你可以使用任何文本编辑器打开这个文件，并根据需要修改配置。比如，你可能想要修改以下一些配置：
 ```yaml
@@ -944,13 +944,13 @@ terminationGracePeriodSeconds: 60
 4. 使用自定义Values文件安装SonarQube
 - 修改values.yaml文件后，使用以下命令，通过自定义的values.yaml文件安装SonarQube：
 ```shell
-helm upgrade --install -n cicd --version '~8' sonarqube sonarqube/sonarqube -f values.yaml
+helm upgrade --install -n cicd --version '~8' sonarqube sonarqube/sonarqube -f values.dingding
 ```
 - 确保将<-n cicd >替换为实际的命名空间。
 5. 访问SonarQube
    - 安装完成后，你可能需要执行一些额外的步骤来访问SonarQube界面，使用 MSE 查看SonarQube的IP地址，需要MSE控制台登录查看，并做域名映射。
 ```shell
-[root@CROLord ~]#helm upgrade --install -n cicd --version '~8' sonarqube sonarqube/sonarqube -f values.yaml
+[root@CROLord ~]#helm upgrade --install -n cicd --version '~8' sonarqube sonarqube/sonarqube -f values.dingding
 NAMESPACE: cicd
 STATUS: deployed
 REVISION: 1
