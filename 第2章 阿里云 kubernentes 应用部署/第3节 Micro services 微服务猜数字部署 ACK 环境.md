@@ -15,8 +15,16 @@
 - **Kubernetes (ACK)**：阿里云的托管 Kubernetes 服务，用于容器编排和管理。
 - **RDS**：用于配置微服务用户数据以及游戏数据。
 - **Nacos**： 用于配置服务注册。
-   - 建议您配置nacos 导入，mse nacos
-[Prod_DATABASE](..%2F..%2F..%2F..%2F..%2F..%2FDocuments%2FCROlord%2FCrolord%20mcrio%2FDEFAULT_GROUP%2FProd_DATABASE)
+   - 需要您将该配置导入 nacos ，并且填写服务中每个`.env`Nacos 变量信息。
+   - ```json
+   {
+   "DB_USER": "crolord",
+   "DB_PASSWORD": "Ry*****3i^",
+   "DB_HOST": "rm-***.mysql.rds.aliyuncs.com",
+   "DB_PORT": "3306",
+   "DB_NAME": "c**d"
+   }
+   ```
 #### 2.2 基本配置项合集说明
 
 - 阿里云 ACK 集群集群令牌获取，获取方式登录容器服务 ACK，选择目标集群，连接信息，复制 Kubeconfig 令牌信息，用于部署应用到目标集群。
@@ -886,7 +894,7 @@ spec:
    ```
 3. **访问前端服务**：
    - **本文网关地址为 MSE ingress 地址,建议将该地址解析域名格式，本文因域名原因临时使用ip模式**
-   - **将不通前端资源部署对应环境需要修改前端路由地址如图所示**
+   - **将`traefik`公网地址修改前端文件`config.js` 路由地址如图所示**
 ![micro-config.png](../resource/images/micro-config.png)
     - 通过 MSE 负载均衡器的 IP 地址访问前端应用，验证应用是否正常运行。
 ![img.png](../resource/images/micro-game.png)
