@@ -13,7 +13,10 @@
 - **SonarQube**：用于代码质量和安全分析的平台。
 - **kaniko**：用于构建和管理容器化应用。
 - **Kubernetes (ACK)**：阿里云的托管 Kubernetes 服务，用于容器编排和管理。
-
+- **RDS**：用于配置微服务用户数据以及游戏数据。
+- **Nacos**： 用于配置服务注册。
+   - 建议您配置nacos 导入，mse nacos
+[Prod_DATABASE](..%2F..%2F..%2F..%2F..%2F..%2FDocuments%2FCROlord%2FCrolord%20mcrio%2FDEFAULT_GROUP%2FProd_DATABASE)
 #### 2.2 基本配置项合集说明
 
 - 阿里云 ACK 集群集群令牌获取，获取方式登录容器服务 ACK，选择目标集群，连接信息，复制 Kubeconfig 令牌信息，用于部署应用到目标集群。
@@ -559,7 +562,7 @@ pipeline {
                             --template '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}-ARCHVARIANT' \\
                             --target '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'
                         """
-                        //sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'"
+                        sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'"
                     }
                 }
             }
@@ -882,6 +885,9 @@ spec:
    [root@CROLord ~]#
    ```
 3. **访问前端服务**：
+   - **本文网关地址为 MSE ingress 地址,建议将该地址解析域名格式，本文因域名原因临时使用ip模式**
+   - **将不通前端资源部署对应环境需要修改前端路由地址如图所示**
+![micro-config.png](../resource/images/micro-config.png)
     - 通过 MSE 负载均衡器的 IP 地址访问前端应用，验证应用是否正常运行。
 ![img.png](../resource/images/micro-game.png)
 ![img.png](../resource/images/micro-score.png)
