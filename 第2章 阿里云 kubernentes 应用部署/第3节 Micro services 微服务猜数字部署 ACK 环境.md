@@ -106,9 +106,10 @@
 #### 3.2 Jenkins 凭据配置
 
 在 Jenkins 中添加以下凭据：
-- **阿里云 ACR 凭据**：类型为 `Secret file`，内容为 `/root/.docker/config.json` 文件内容。
-- **Kubernetes 凭据**：类型为 `Secret text`，内容为从 ACK 控制台复制的 Kubeconfig。
+- **阿里云 ACR 凭据**：类型为 `Secret text`，内容为 `/root/.docker/config.json` 文件内容。
+- **Kubernetes 凭据**：类型为 `Secret file`，内容为从 ACK 控制台复制的 Kubeconfig。
 - **SonarQube Token**：类型为 `Secret text`，内容为 SonarQube 生成的 Token。
+![img.png](../resource/images/jenkins-credentials.png)
 
 ### 4. 项目结构
 
