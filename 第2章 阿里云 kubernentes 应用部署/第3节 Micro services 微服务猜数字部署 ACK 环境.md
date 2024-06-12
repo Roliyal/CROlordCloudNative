@@ -13,8 +13,8 @@
 - **SonarQube**：用于代码质量和安全分析的平台。
 - **kaniko**：用于构建和管理容器化应用。
 - **Kubernetes (ACK)**：阿里云的托管 Kubernetes 服务，用于容器编排和管理。
-- **RDS**：用于配置微服务用户数据以及游戏数据。
-- **Nacos**： 用于配置服务注册。
+- **RDS**：[阿里云云数据库RDS](https://rdsnext.console.aliyun.com/rdsList)用于配置微服务用户数据以及游戏数据。
+- **Nacos**：[阿里云微服务引擎MSE](https://mse.console.aliyun.com/)用于配置服务注册。
    - 需要您将该配置导入 nacos ，并且填写服务中每个`.env`Nacos 变量信息。
   ```json
    {
@@ -372,7 +372,8 @@ ENTRYPOINT ["/app/main"]
 
 ### 6. Jenkins Pipeline 配置
 
-创建一个 `Jenkinsfile` 文件，并放置在项目根目录下。
+创建一个 `Jenkinsfile` 流水线，并将`jenkinsfile`放置在项目根目录下或者配置 `Pipeline script`，Jenkins 配置流水线，如图所示
+![img.png](../resource/images/jenkins-mrcro.png)
 
 ```groovy
 pipeline {

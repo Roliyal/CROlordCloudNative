@@ -443,4 +443,7 @@
     kubectl exec cnfs-nas-sts-0 -- ls -arlth /data
     kubectl exec cnfs-nas-sts-0 -- mount |grep nfs
     ```
+   6. 为Pod动态配置阿里云产品白名单
+       - **动态地将Pod的IP地址加入或移出指定的云产品白名单，目前支持产品 SLB、Redis、RDS，需要额外云产品支持需要二开，具体项目可以参考** [kubernetes-webhook-injector](https://github.com/AliyunContainerService/kubernetes-webhook-injector)
+       - **为Pod动态配置阿里云产品白名单[参考地址](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/security-and-compliance/dynamically-add-the-ip-addresses-of-pods-to-the-whitelists-of-alibaba-cloud-services)**
 至此配置 ACK 初始化完成，如有问题可以提 issue 咨询。
