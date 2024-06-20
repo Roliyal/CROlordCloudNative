@@ -1,4 +1,4 @@
-以下是如何在 Jenkins 中配置流水线，以便将 `Docker` 镜像部署到阿里云 SAE 服务中的详细步骤和示例脚本。
+配置如何在 Jenkins 中配置`CD`步骤流水线，以便将 `Docker` 镜像部署到阿里云 SAE 服务中的详细步骤和示例脚本。
 
 ### 1. Jenkins 配置
 
@@ -45,10 +45,10 @@ pipeline {
     agent any
 
     parameters {
-        persistentString(name: 'SAE_CREDENTIALS', defaultValue: 'LTAI5t8Rcqi2xKi5kQzd85Xr', description: 'SAE 凭据')
+        persistentString(name: 'SAE_CREDENTIALS', defaultValue: 'corlord : LT***5Xr', description: 'SAE 凭据')
         persistentString(name: 'SAE_NAMESPACE', defaultValue: 'cn-hongkong:demo', description: 'SAE 应用命名空间（例如：cn-hangzhou）')
-        persistentString(name: 'APPLICATION_ID', defaultValue: '0d930603-f647-480c-94e7-a20642da1634', description: '请设置应用 ID')
-        persistentString(name: 'TARGET_OBJECT', defaultValue: 'crolord-uat-registry-vpc.cn-hongkong.cr.aliyuncs.com/febe/micro-front-uat:1.0.5', description: '请设置目标对象（file|Url|imageUrl）')
+        persistentString(name: 'APPLICATION_ID', defaultValue: '0d930603-***a20642da1634', description: '请设置应用 ID')
+        persistentString(name: 'TARGET_OBJECT', defaultValue: 'crolord-uat-registry-vpc.cn-hongkong.cr.aliyuncs.com/febe/micro-**-uat:1.0.5', description: '请设置目标对象（file|Url|imageUrl）')
         booleanParam(name: 'TARGET_IMAGE_URL', defaultValue: true, description: '目标是否为 imageUrl')
         persistentString(name: 'UPDATE_STRATEGY', defaultValue: '{"type":"GrayBatchUpdate","batchUpdate":{"batch":2,"releaseType":"auto","batchWaitTime":1},"grayUpdate":{"gray":1}}', description: '更新策略 JSON 配置')
         persistentString(name: 'MIN_READY_INSTANCES', defaultValue: '2', description: '部署时的最小就绪实例数（例如：2）')
@@ -149,13 +149,13 @@ pipeline {
 ```
 ### 5. 部署参数详细说明
 
-在 Jenkins Pipeline 中使用以下部署参数，可以灵活地配置和管理部署到阿里云 SAE 服务的应用。以下是每个参数的详细说明：
+在 Jenkins Pipeline 中使用以下部署参数，可以灵活地配置和管理部署到阿里云 SAE 服务的应用。详细参数可以参考官网示例[DeployApplication](help.aliyun.com/zh/sae/developer-reference/api-deployapplication)以下是每个参数的详细说明：
 
 1. **SAE_CREDENTIALS**：
     - **描述**：SAE 凭据
-    - **默认值**：`LTAI5t8Rcqi2xKi5kQzd85Xr`
+    - **默认值**：`CROlord : LTA*****5Xr`
     - **类型**：字符串
-    - **用途**：用于访问 SAE 服务的凭据。
+    - **用途**：用于访问 SAE 服务的凭据，获取路径`Dashboard>Manage Jenkins>System` Deploy to SAE 字段下Name和AliCloud Access Key Id拼接而成。
 
 2. **SAE_NAMESPACE**：
     - **描述**：SAE 应用命名空间（例如：cn-hangzhou）
@@ -171,9 +171,9 @@ pipeline {
 
 4. **TARGET_OBJECT**：
     - **描述**：请设置目标对象（file|Url|imageUrl）
-    - **默认值**：`crolord-uat-registry-vpc.cn-hongkong.cr.aliyuncs.com/febe/micro-front-uat:1.0.5`
+    - **默认值**：`crolord-uat-registry-vpc.cn-hongkong.cr.aliyuncs.com/febe/micro-***at:1.0.5`
     - **类型**：字符串
-    - **用途**：指定要部署的目标对象，支持文件、URL或imageUrl。
+    - **用途**：指定要部署的目标对象，支持文件、URL或imageUrl，本文为演示填写完整的路径，实际建议使用变量获取。
 
 5. **TARGET_IMAGE_URL**：
     - **描述**：目标是否为 imageUrl
@@ -213,7 +213,7 @@ pipeline {
 
 11. **ACR_INSTANCE_ID**：
     - **描述**：ACR EE 实例 ID（例如：cri-xxxxxx）
-    - **默认值**：`cri-dcvg4tjrhgptvs54`
+    - **默认值**：`cri-***vs54`
     - **类型**：字符串
     - **用途**：指定 ACR EE 实例 ID。
 
@@ -305,9 +305,7 @@ pipeline {
     - **描述**：Java 启动参数。 ($JAVA_HOME/bin/java $JarStartOptions -jar $CATALINA_OPTS "$package_path" $JarStartArgs) 设为空以清除设置，"unchanging" 表示无变化
     - **默认值**：`unchanging`
     - **类型**：字符串
-    - **用途**
-
-：指定 Java 启动参数。
+    - **用途**：指定 Java 启动参数。
 
 27. **WAR_START_OPTIONS**：
     - **描述**：War 启动选项。设为空以清除设置，"unchanging" 表示无变化
@@ -420,10 +418,10 @@ pipeline {
 ### 6. 验证部署
 
 1. 登录 SAE 控制台，在目标应用的变更记录页面，查看本次的变更操作并确认变更状态是否显示`手动等待确认`。
-   ![img.png](../resource/Deploymentcodesae.png)
+   ![img.png](../resource/images/Deploymentcodesae.png)
 
 2. 通过 SAE 应用的实例信息页面，验证应用是否正常运行。
-   ![img.png](../resource/codedeploy.png)
+   ![img.png](../resource/images/codedeploy.png)
 
 
 ### 总结
