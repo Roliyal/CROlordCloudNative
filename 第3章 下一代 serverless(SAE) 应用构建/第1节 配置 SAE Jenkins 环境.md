@@ -23,7 +23,7 @@
 2. 在 "Enter an item name" 区域输入项目名称，选择 "Pipeline"，然后点击 "OK"。
 3. 在 Pipeline 页签，点击 "Pipeline Syntax"。
 
-### 3. 配置流水线片段
+### 3. 参考配置流水线片段
 
 1. 在 "Snippet Generator" 页面，从 "Sample Step" 下拉列表选择 "saeClient: Deploy into SAE"。
 2. 在 "Add" 下拉列表中选择 "SAE Application"。
@@ -33,10 +33,10 @@
     - **Application Id**：输入部署应用的应用 ID。
     - **Target Object**：输入部署包或镜像的地址链接，例如 `registry-vpc.cn-hangzhou.aliyuncs.com/demo/consumer:1.0`。
     - **Whether target imageUrl**：如果 `Target Object` 为镜像地址，则需要选中该配置项。
+ 
+4. 单击 "Generate Pipeline Script"，拷贝生成的流水线脚本，亦或者采用本文 `pipline script` 配置。
 
-4. 单击 "Generate Pipeline Script"，拷贝生成的流水线脚本。
-
-### 4. 编辑 Jenkins Pipeline
+### 4. 配置 Jenkins Pipline script
 
 1. 返回 Pipeline 配置页面，在 "Pipeline" 区域输入以下内容：
 
