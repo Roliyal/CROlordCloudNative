@@ -490,6 +490,6 @@ RUN ln -sf /usr/local/lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
 
 ```
 
-至此，jenkins 部署章节结束，如需要额外配置参考上述 values 字段修改，如有问题可以提 issue.
+至此，jenkins 部署章节结束，如需要额外配置参考上述 values 字段修改，如果在部署过程中遇见问题建议您添加钉钉群咨询（CROLord 开源项目交流01群 DingTalk Group Number: 83210005055）。
 
 
