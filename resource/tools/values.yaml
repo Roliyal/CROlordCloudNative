@@ -171,7 +171,7 @@ controller:
       tcp: {}
       udp: {}
 
-  ## Node labels for controller pod assignment
+  ## Node labels for controller pod.txt assignment
   ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
   ##
   nodeSelector:
@@ -196,10 +196,10 @@ controller:
   # Will add custom headers before sending response traffic to the client according to: https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#add-headers
   addHeaders: {}
 
-  # Optionally customize the pod dnsConfig.
+  # Optionally customize the pod.txt dnsConfig.
   dnsConfig: {}
 
-  # Optionally customize the pod hostname.
+  # Optionally customize the pod.txt hostname.
   hostname: {}
 
   # Optionally change this to ClusterFirstWithHostNet in case you have 'hostNetwork: true'.
@@ -235,7 +235,7 @@ controller:
   ##
   electionID: ingress-controller-leader
 
-  # labels to add to the pod container metadata
+  # labels to add to the pod.txt container metadata
   podLabels: {}
   #  key: value
 
@@ -253,7 +253,7 @@ controller:
   ## Allows customization of the source of the IP address or FQDN to report
   ## in the ingress status field. By default, it reads the information provided
   ## by the service. If disable, the status field reports the IP address of the
-  ## node or nodes where an ingress controller pod is running.
+  ## node or nodes where an ingress controller pod.txt is running.
   publishService:
     enabled: true
     ## Allows overriding of the publish service to bind to
@@ -340,7 +340,7 @@ controller:
   ## Ref: https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#affinity-and-anti-affinity
   ##
   affinity: {}
-    # # An example of preferred pod anti-affinity, weight is in the range 1-100
+    # # An example of preferred pod.txt anti-affinity, weight is in the range 1-100
     # podAntiAffinity:
     #   preferredDuringSchedulingIgnoredDuringExecution:
     #   - weight: 100
@@ -361,7 +361,7 @@ controller:
     #           - controller
     #       topologyKey: kubernetes.io/hostname
 
-    # # An example of required pod anti-affinity
+    # # An example of required pod.txt anti-affinity
     # podAntiAffinity:
     #   requiredDuringSchedulingIgnoredDuringExecution:
     #   - labelSelector:
@@ -548,7 +548,7 @@ controller:
 
 
   extraContainers: []
-  ## Additional containers to be added to the controller pod.
+  ## Additional containers to be added to the controller pod.txt.
   ## See https://github.com/lemonldap-ng-controller/lemonldap-ng-controller as example.
   #  - name: my-sidecar
   #    image: nginx:latest
@@ -580,7 +580,7 @@ controller:
       readOnly: true
 
   extraVolumes:
-    ## Additional volumes to the controller pod.
+    ## Additional volumes to the controller pod.txt.
     #  - name: copy-portal-skins
     #    emptyDir: {}
     - name: localtime
@@ -753,10 +753,10 @@ controller:
       #     description: Too many 4XXs
       #     summary: More than 5% of all requests returned 4XX, this requires your attention
 
-  ## Improve connection draining when ingress controller pod is deleted using a lifecycle hook:
+  ## Improve connection draining when ingress controller pod.txt is deleted using a lifecycle hook:
   ## With this new hook, we increased the default terminationGracePeriodSeconds from 30 seconds
   ## to 300, allowing the draining of connections up to five minutes.
-  ## If the active connections end before that, the pod will terminate gracefully at that time.
+  ## If the active connections end before that, the pod.txt will terminate gracefully at that time.
   ## To effectively take advantage of this feature, the Configmap feature
   ## worker-shutdown-timeout new value is 240s instead of 10s.
   ##
@@ -842,11 +842,11 @@ defaultBackend:
   ##
   containerSecurityContext: {}
 
-  # labels to add to the pod container metadata
+  # labels to add to the pod.txt container metadata
   podLabels: {}
   #  key: value
 
-  ## Node labels for default backend pod assignment
+  ## Node labels for default backend pod.txt assignment
   ## Ref: https://kubernetes.io/docs/user-guide/node-selection/
   ##
   nodeSelector:
@@ -874,7 +874,7 @@ defaultBackend:
   #   mountPath: /var/lib/lemonldap-ng/portal/skins
 
   extraVolumes: []
-  ## Additional volumes to the default backend pod.
+  ## Additional volumes to the default backend pod.txt.
   #  - name: copy-portal-skins
   #    emptyDir: {}
 

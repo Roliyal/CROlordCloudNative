@@ -187,7 +187,7 @@
        # 测试DNS解析时间的函数
        test_dns() {
          namespace=$1
-         pod=$2
+         pod.txt=$2
          echo "Testing DNS in namespace: $namespace, pod: $pod"
             
          times=()

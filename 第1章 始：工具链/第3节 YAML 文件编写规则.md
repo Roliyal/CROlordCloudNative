@@ -360,7 +360,7 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: my-pod
+  name: my-pod.txt
 spec:
   containers:
     - name: my-container
@@ -394,7 +394,7 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: my-pod
+  name: my-pod.txt
 spec:
   containers:
     - name: my-container
@@ -420,7 +420,7 @@ spec:
 apiVersion: v1
 kind: Pod
 metadata:
-  name: my-pod
+  name: my-pod.txt
 spec:
   containers:
     - name: my-container
