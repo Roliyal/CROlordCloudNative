@@ -2,7 +2,7 @@
 
 ### 1. 概述
 
-本篇文章将介绍如何将一个基于 GO 和 VUE 的应用进行前后端分离，并部署到阿里云的 Serverless应用引擎SAE 环境，以及选择部署前端资源到 oss 。整个流程将涵盖 Jenkins Pipeline 的使用，以及安全和质量检测工具如 Trivy 和 SonarQube 的集成。此外，我们还将涉及多架构构建的相关内容。
+本篇文章将介绍如何将一个基于 GO 和 VUE 的应用进行微服务猜数字，并部署到阿里云的 Serverless应用引擎SAE 环境，以及选择部署前端资源到 oss 。整个流程将涵盖 Jenkins Pipeline 的使用，以及安全和质量检测工具如 Trivy 和 SonarQube 的集成。此外，我们还将涉及多架构构建的相关内容。
 
 ### 2. 环境准备
 
@@ -16,7 +16,6 @@
 
 #### 2.2 基本配置项合集说明
 
-- 阿里云 ACK 集群集群令牌获取，获取方式登录容器服务 ACK，选择目标集群，连接信息，复制 Kubeconfig 令牌信息，用于部署应用到目标集群。
 - 阿里云 ACR 账户信息获取，使用 Docker 登录镜像仓库后，将 `/root/.docker/config.json`配置信息配置为secret凭据，用于 kaniko 构建镜像使用。
 - SonarQube Server 登录 Sonarqube，在account选项/security，创建Generate Tokens，用于配置 jenkins 扫描代码。
 - 项目部署代码库地址： [FEBEseparation](https://github.com/Roliyal/CROlordCodelibrary/tree/main/Chapter2KubernetesApplicationBuild/Unit2CodeLibrary/FEBEseparation)
@@ -84,40 +83,66 @@
 ### 3. 项目结构
 
 ```plaintext
-.
-├── go-guess-number
+Microservice
+├── DockerfileTOR
+├── dynamic.yml
+├── front-guess
 │   ├── Dockerfile
-│   ├── go-guess-number.yaml
+│   ├── README.md
+│   ├── Vue-front.yaml
+│   ├── babel.config.js
+│   ├── config.js
+│   ├── jsconfig.json
+│   ├── nginx.conf
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── public
+│   │   ├── favicon.ico
+│   │   └── index.html
+│   ├── src
+│   │   ├── App.vue
+│   │   ├── assets
+│   │   │   └── logo.png
+│   │   ├── auth-api.js
+│   │   ├── components
+│   │   │   ├── GuessNumberComponent.vue
+│   │   │   ├── LoginComponent.vue
+│   │   │   ├── RegisterComponent.vue
+│   │   │   └── ScoreboardComponent.vue
+│   │   ├── config.js
+│   │   ├── main.js
+│   │   ├── router
+│   │   │   └── index.js
+│   │   ├── store.js
+│   │   └── styles.css
+│   └── vue.config.js
+├── game-service
+│   ├── Dockerfile
+│   ├── database.go
+│   ├── game.yaml
 │   ├── go.mod
 │   ├── go.sum
-│   ├── jenkinsfile
-│   └── main.go
-└── vue-go-guess-number
-    ├── Dockerfile
-    ├── README.md
-    ├── babel.config.js
-    ├── default.conf
-    ├── jsconfig.json
-    ├── localhost.xml
-    ├── package-lock.json
-    ├── package.json
-    ├── public
-    │   ├── favicon.ico
-    │   └── index.html
-    ├── src
-    │   ├── App.vue
-    │   ├── GuessGame.vue
-    │   ├── LogInGame.vue
-    │   ├── assets
-    │   │   └── logo.png
-    │   ├── components
-    │   │   └── HelloWorld.vue
-    │   ├── config.js
-    │   ├── main.js
-    │   └── vue.config.js
-    └── vue-go-guess-number.yaml
-
-7 directories, 25 files
+│   ├── main.go
+│   └── nacos.go
+├── kubernetes-traefik.yaml
+├── login-service
+│   ├── Dockerfile
+│   ├── database.go
+│   ├── go.mod
+│   ├── go.sum
+│   ├── login.yaml
+│   ├── main.go
+│   └── nacos.go
+├── scoreboard-service
+│   ├── Dockerfile
+│   ├── database.go
+│   ├── dingding
+│   ├── go.mod
+│   ├── go.sum
+│   ├── main.go
+│   ├── nacos.go
+│   └── score.yaml
+└── traefik.yml
 
 ```
 
@@ -363,7 +388,7 @@ stage('Push Multi-Arch Manifest') {
                     --template '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}-ARCHVARIANT' \\
                     --target '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'
                 """
-                //sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'" //是否开启安全Trivy扫描
+                sh "trivy image --exit-code 1 --severity HIGH,CRITICAL --ignore-unfixed --no-progress --insecure --timeout 5m '${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAME}:${env.VERSION_TAG}'" //是否开启安全Trivy扫描
 
             }
         }
@@ -442,7 +467,7 @@ stage('Deploy SAE Application') {
    - 如图所示![img.png](../resource/images/jenkins-values-sae.png)
 
 
-### 实际部署前后端项目分离项目SAE环境
+### 实际部署微服务猜数字项目SAE环境
 
 #### 0. 创建前端流水线配置
 1. 创建 Jenkins Pipeline 项目
@@ -704,7 +729,7 @@ pipeline {
 
 ```
 3. 填写对应参数后，点击构建。
-#### 1. 创建后端流水线配置
+#### 1. 创建服务模块流水线配置
 1. 创建 Jenkins Pipeline 项目
    登录 Jenkins 首页，点击 "New Item"。
    在 "Enter an item name" 区域输入项目名称，选择 "Pipeline"，然后点击 "OK"。
@@ -714,23 +739,24 @@ pipeline {
 ```groovy
 流水线配置基本内容一致请根据实际部署参数修改。
 ```
+![img.png](../resource/images/micro_sae_list.png)
 3. 填写对应参数后，点击构建。
 
 ### SAE环境中后端地址修改说明
 
 1. 使用 ServiceName 注意事项
 - **使用 SVC 能力访问后端服务：** 在前后端分离场景中，需要后端地址，可以通过 SVC 地址访问后端应用。参考文档[基于K8s ServiceName配置应用服务访问](https://help.aliyun.com/zh/sae/user-guide/configure-application-access-based-on-kubernetes-services)
-- **部署sae时，开启 SVC 能力，并获取地址**![img.png](../resource/images/febe_svc_front.png)
-- **部署sae时，修改前端 `nginx` 中后端地址**![img.png](../resource/images/febe_nginx.png)
-- **部署sae时，检查后端路径是否需要修改**![img.png](../resource/images/vue_ruter.png)
+- **部署sae时，开启 SVC 能力，并获取各个服务模块地址**![micro_score.png](../resource/images/micro_score.png)
+- **部署sae时，修改前端 `nginx` 中后端网关地址地址** ![img.png](../resource/images/micro_traefik.png)
+- **部署sae时，修改网关 `teaefik` 中后端`ServiceName`地址地址** ![img.png](../resource/images/micro_teaefik_svc.png)
+- **部署sae时，检查后端路径是否需要修改**![img.png](../resource/images/micro_vue_router.png)
 
 2. 添加负载均衡完成部署访问
 - **前端应用添加网关路由 SLB 即可** : 如果需要不用nginx完成转发可以通过 `LB`路由进行转发，如需要具体配置建议您添加钉钉群咨询（CROLord 开源项目交流01群 DingTalk Group Number: 83210005055）。
-![img.png](../resource/images/slb_febe.png)
 - **结果验证**
-![img.png](../resource/images/febe_sae_done.png)
-#### 
+![img_1.png](../resource/images/micro_done.png)
+
 
 ### 总结
 
-通过本文的步骤，我们实现了一个基于 GO 和 VUE 的单体应用的前后端分离，并利用 Jenkins Pipeline 自动化部署到阿里云的 SAE环境以及前端分别部署容器环境。我们还集成了 Trivy 和 SonarQube 进行安全和质量检测，并配置了多架构构建。希望这些内容能帮助你在实际项目中实现类似的部署流程，如果在部署过程中遇见问题建议您添加钉钉群咨询（CROLord 开源项目交流01群 DingTalk Group Number: 83210005055）。
+通过本文的步骤，我们实现了一个基于 GO 和 VUE 的微服务，并利用 Jenkins Pipeline 自动化部署到阿里云的 SAE环境。我们还集成了 Trivy 和 SonarQube 进行安全和质量检测，并配置了多架构构建。希望这些内容能帮助你在实际项目中实现类似的部署流程，如果在部署过程中遇见问题建议您添加钉钉群咨询（CROLord 开源项目交流01群 DingTalk Group Number: 83210005055）。
