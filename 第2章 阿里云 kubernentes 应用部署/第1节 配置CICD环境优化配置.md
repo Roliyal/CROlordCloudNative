@@ -302,7 +302,7 @@ agent:
         nodeSelector: "beta.kubernetes.io/arch=amd64" #lables取自阿里云kubernetes 容器服务节点标签 
         containers:
           - name: kanikoamd
-            image: docker.io/crolord/kanikomanifest-tool:v1.2.2 #镜像版本为AMD架构，其中封装 kaniko、 trivy 、Manifest-tools、 sonarqunbe 工具
+            image: docker.io/crolord/kanikomanifest-tool:v1.2.4 #镜像版本为AMD架构，其中封装 kaniko、 trivy 、Manifest-tools、 sonarqunbe 工具
             command: "sh -c"
             args: "cat"
             ttyEnabled: true

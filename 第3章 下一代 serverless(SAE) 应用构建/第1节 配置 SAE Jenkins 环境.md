@@ -149,7 +149,7 @@ pipeline {
 ```
 ### 5. 部署参数详细说明
 
-在 Jenkins Pipeline 中使用以下部署参数，可以灵活地配置和管理部署到阿里云 SAE 服务的应用。详细参数可以参考官网示例[DeployApplication](help.aliyun.com/zh/sae/developer-reference/api-deployapplication)以下是每个参数的详细说明：
+在 Jenkins Pipeline 中使用以下部署参数，可以灵活地配置和管理部署到阿里云 SAE 服务的应用。详细参数可以参考官网示例[DeployApplication](https://help.aliyun.com/zh/sae/developer-reference/api-sae-2019-05-06-deployapplication)以下是每个参数的详细说明：
 
 1. **SAE_CREDENTIALS**：
     - **描述**：SAE 凭据
