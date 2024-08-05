@@ -65,13 +65,13 @@ controller:
     - workflow-multibranch:783.va_6eb_ef636fb_d
     - kubernetes:4203.v1dd44f5b_1cf9
     - workflow-aggregator:latest
-    - git:5.2.1
-    - configuration-as-code:1775.v810dc950b_514
+    - git:5.2.2
+    - configuration-as-code:1836.vccda_4a_122a_a_e
     - job-dsl:1.87
     - docker-build-publish:1.4.0
     - sshd:3.322.v159e91f6a_550
     - ws-cleanup:0.45
-    - gson-api:2.10.1-15.v0d99f670e0a_7
+    - gson-api:2.11.0-41.v019fcf6125dc
     - github:1.38.0
     - build-name-setter:2.4.1
     - versionnumber:1.11
