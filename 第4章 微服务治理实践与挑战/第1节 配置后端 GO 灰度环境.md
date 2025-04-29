@@ -110,13 +110,11 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 ./instgo go build -o main-arm64 .
    进入 *全链路灰度* → 创建泳道 服务。
 2. 创建 *泳道组名称*：
     - **流量入口**：选择使用的网关类型，例如本文使用  **MSE云原生网关**
-      <img alt="lanerules.png" src="..%2Fresource%2Fimages%2Flanerules.png"/>
-    - **配置灰度规则**：`x-mse-tag: gray`
-      <img alt="grayscalerule.png" src="..%2Fresource%2Fimages%2Fgrayscalerule.png"/>
-3. 保存后生效。  
-   <img alt="garyruledone.png" src="..%2Fresource%2Fimages%2Fgaryruledone.png"/>
----
-
+    - ![lanerules.png](../resource/images/lanerules.png)
+    - **配置灰度规则**：`X-user-id 条件 value`
+    - ![grayscalerule.png](../resource/images/grayscalerule.png)
+3. 保存后生效。
+   ![garyruledone.png](../resource/images/garyruledone.png)
 ## Jenkins CI 流水线（镜像构建&推送）
 
 <details>
