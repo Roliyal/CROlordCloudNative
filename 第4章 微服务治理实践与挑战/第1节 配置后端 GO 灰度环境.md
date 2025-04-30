@@ -42,7 +42,7 @@
 1. 在每个项目代码根目录创建 `k8s/deployment.yaml`：
 
 ```yaml
-···
+
   template:
     metadata:
       labels:
@@ -51,7 +51,7 @@
         mseNamespace: "crolord"   # 选填
         msePilotCreateAppName: "micro-go-game"  # 必填，默认为 appName
         aliyun.com/app-language: golang # 必填，否则 MSE 无法识别
-···
+
 ```
 
 
