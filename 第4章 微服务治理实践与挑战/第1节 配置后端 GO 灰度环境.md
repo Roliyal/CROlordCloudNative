@@ -1,7 +1,6 @@
-
 ---
 
-# 基于阿里云 MSE 实现 **Go 服务灰度发布** — 从代码到生产的全流程
+# 基于阿里云 MSE 实现 **Go 服务全链路灰度发布** — 从代码到生产的全流程
 
 > 适用场景
 > - **容器化 Go 微服务**
@@ -17,22 +16,22 @@
 2. [准备工作](#准备工作)
     - 2.1 [为 Go 应用打上 MSE 标签](#21-为-go-应用打上mse-标签)
     - 2.2 [配置灰度路由规则](#22-配置灰度路由规则)
-    - 2.3 [代码中的标记](#23-配置代码中的标记)
-3. [Jenkins CI 流水线（镜像构建&推送&灰度版本发布）中部署至 Kubernetes 的详细解释及示例](#jenkinsci-流水线镜像构建推送)
+    - 2.3 [代码中的标记](#1-关于-cookie-和请求头中的-x-user-id)
+3. [Jenkins CI 流水线（镜像构建&推送&灰度版本发布）中部署至 Kubernetes 的详细解释及示例](#jenkins-ci-流水线镜像构建推送灰度版本发布中部署至-kubernetes-的详细解释及示例)
 4. [在 MSE 控制台观察流量](#在-mse-控制台观察流量)
 5. [可选：灰度探活 / 自动扩缩](#可选灰度探活--自动扩缩)
-
+6. [参考文档](#参考文档)
 ---
 
 ## 前置条件
 
-| 组件 | 版本 / 说明 |
-|------|-------------|
-| **Go** | 1.20+（已内置 InstGo & ARMS Trace） |
-| **MSE** | 2.0 Console，已创建 *服务治理实例* |
-| **ACR** | 企业版实例（推荐） |
-| **Jenkins** | 2.346+，安装 *MSE Jenkins Plug-in*<br>（同 SAE 插件安装方式，上传 `mse-jenkins-plugin.hpi`） |
-| **Kubernetes/ACK** | ≥ 1.24，节点访问 MSE VPC |
+| 组件 | 版本 / 说明                                                                     |
+|------|-----------------------------------------------------------------------------|
+| **Go** | 1.20+（已内置 InstGo & ARMS Trace）                                              |
+| **MSE** | 2.0 Console，已创建 *服务治理实例*                                                    |
+| **ACR** | 企业版实例（推荐）                                                                   |
+| **Jenkins** | 2.346+，安装 *MSE ack-onepilot *<br>（ |
+| **Kubernetes/ACK** | ≥ 1.24，节点访问 MSE VPC                                                         |
 
 ---
 
@@ -458,6 +457,8 @@ Jenkins Pipeline 中的部署流程根据不同参数决定部署策略：
 
 - [Kubernetes Deployment Documentation](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/)
 - [Jenkins Pipeline Syntax](https://www.jenkins.io/doc/book/pipeline/syntax/)
+- [ACK微服务应用接入MSE治理中心（Golang版）](https://help.aliyun.com/zh/mse/getting-started/ack-microservice-application-access-mse-governance-center-golang-version)
+- [基于MSE云原生网关实现全链路灰度](https://help.aliyun.com/zh/mse/user-guide/implement-an-end-to-end-canary-release-by-using-mse-cloud-native-gateways)
 
 ---
 
@@ -482,6 +483,6 @@ Jenkins Pipeline 中的部署流程根据不同参数决定部署策略：
 ## 结束语
 
 
-至此，我们完成了 **基于 MSE 的 Go 微服务灰度发布** 全流程：  
+至此，我们完成了 **基于 MSE 的 Go 微服务全链路灰度发布** 全流程：  
 *镜像构建 → Jenkins Gray CD → MSE 灰度治理 → 指标监控/回滚*。  
 你可以根据实际场景扩展蓝绿部署、A/B Test、分地域灰度等进阶功能。如有问题，欢迎在 **钉钉群 83210005055** 交流。
