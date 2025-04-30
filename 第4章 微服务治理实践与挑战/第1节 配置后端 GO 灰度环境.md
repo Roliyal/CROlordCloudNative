@@ -115,6 +115,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=arm64 ./instgo go build -o main-arm64 .
     - ![grayscalerule.png](../resource/images/grayscalerule.png)
 3. 保存后生效。
    ![garyruledone.png](../resource/images/garyruledone.png)
+
 ## Jenkins CI 流水线（镜像构建&推送）
 
 <details>
