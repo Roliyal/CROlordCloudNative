@@ -388,7 +388,7 @@ env.FULL_IMAGE_URL = "${env.IMAGE_REGISTRY}/${env.IMAGE_NAMESPACE}/${env.JOB_NAM
 ```
 - **作用**：构造 Docker 镜像的完整地址。`IMAGE_REGISTRY`、`IMAGE_NAMESPACE`、`JOB_NAME` 和 `VERSION_TAG` 是 Jenkins 中的环境变量，通过这些变量动态构造镜像的路径。
 
-### 3. **灰度部署 (Canary Deployment) 详解**
+##### 3. **灰度部署 (Canary Deployment) 详解**
 
 灰度部署允许逐步将新版本应用部署到一部分用户，降低全量部署时出现问题的风险。具体步骤如下：
 
@@ -421,7 +421,7 @@ kubectl apply -f ${env.WORKSPACE}/${params.BUILD_DIRECTORY}/k8s/deployment-canar
 ```
 - **作用**：首先输出 `deployment-canary.yaml` 文件的内容，以便调试检查。然后使用 `kubectl apply` 将该配置应用到 Kubernetes 集群，启动灰度部署。
 
-### 4. **回滚部署**
+##### 4. **回滚部署**
 
 如果当前部署失败或需要回滚到之前的版本，使用以下命令：
 ```groovy
@@ -431,7 +431,7 @@ kubectl rollout undo deployment/${env.DEPLOYMENT_NAME}
 ```
 - **作用**：`kubectl rollout undo` 用于回滚当前部署到上一个成功的版本。`DEPLOYMENT_NAME` 是应用的名称，通常从环境变量中获取。
 
-### 5. **普通部署**
+##### 5. **普通部署**
 
 对于没有启用灰度部署或回滚的情况，直接执行常规部署：
 ```groovy
@@ -442,7 +442,7 @@ kubectl apply -f ${env.WORKSPACE}/${params.BUILD_DIRECTORY}/k8s/deployment.yaml
 ```
 - **作用**：直接替换原 `deployment.yaml` 文件中的镜像地址，然后使用 `kubectl apply` 将新版本的应用部署到 Kubernetes 集群。
 
-### 6. **总结**
+##### 6. **Jenkins 灰度总结**
 
 Jenkins Pipeline 中的部署流程根据不同参数决定部署策略：
 - **灰度部署 (Canary)**：复制原部署文件，修改应用名称和镜像地址，并标记为灰度版本。
