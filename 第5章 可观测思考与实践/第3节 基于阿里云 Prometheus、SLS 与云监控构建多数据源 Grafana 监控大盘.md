@@ -148,7 +148,8 @@ docker run --rm -p 8084:8084 myapp-arm-agent
 查看 ARMS APM 控制台监控数据或日志。
 
 ```md
-![ARMS 接入效果验证]![arms-go-sore.png](../resource/images/arms-go-sore.png)
+![ARMS 接入效果验证]
+![arms-go-sore.png](../resource/images/arms-go-sore.png)
 ```
 
 ---
@@ -260,9 +261,9 @@ avg_over_time(ResponseTime[5m])
 cpu{namespace="default"}
 ```
 
-```
-[grafana-ns.png](../resource/images/grafana-ns.png)
-```
+
+![grafana-ns.png](../resource/images/grafana-ns.png)
+
 
 ---
 
@@ -275,7 +276,7 @@ cpu{namespace="default"}
 | 自建 Grafana      | 可用 API 或手动地址配置 |
 
 ---
----
+
 
 ## 5 Grafana 可视化配置
 
@@ -312,15 +313,12 @@ avg(AliyunRds_DiskUsage{engine="MySQL"}) by (regionId,instanceId)
 ```sql
 sum by (resourceName, resourceStatusCode) (
   increase(resource_duration_count{appEnv="prod"}[$__range])
-)```
+)
+```
 
 **仪表盘样例效果：**
 
-```md
-
-[grafana-demo.png](../resource/images/grafana-demo.png)
-```
-
+![grafana-demo.png](../resource/images/grafana-demo.png)
 ---
 
 ## 6. 建议步骤
