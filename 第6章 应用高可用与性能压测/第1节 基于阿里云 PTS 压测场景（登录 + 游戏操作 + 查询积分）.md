@@ -171,8 +171,8 @@ Cookie: AuthToken=${authToken}; X-User-ID=${userId}; x-pre-higress-tag=base
 - 并发瓶颈观察点（TPS 饱和）
 
 > 7.1 压测参数示意
-![code-pts-demo.png](../resource/images/code-pts-demo.png)
 
+![code-pts-demo.png](../resource/images/code-pts-demo.png)
 ![code-pts-login-demo.png](../resource/images/code-pts-login-demo.png)
 ![code-pts-login-demo-out.png](../resource/images/code-pts-login-demo-out.png)
 ![code-pts-game-header.png](../resource/images/code-pts-game-header.png)
