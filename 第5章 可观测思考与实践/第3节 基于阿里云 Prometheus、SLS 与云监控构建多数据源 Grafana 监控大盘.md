@@ -236,11 +236,48 @@ avg_over_time(ResponseTime[5m])
 
 ---
 
-4. Prometheus 数据源自动接入（prom-${InstanceID}）
+#### **Prometheus 数据源自动接入（云产品统一入口）**
+
+1. 登录 [阿里云 Prometheus 控制台](https://prom.console.aliyun.com/)  
+2. 左侧菜单 → **数据接入 > 云产品监控**  
+3. 添加 **日志服务 SLS（MetricStore）** 数据源  
+4.  自动生成数据源名称：
+```
+实例名称/实例Id
+```
+
+> Prometheus 自动采集该 Project 下所有 MetricStore 数据，Label 自动映射。
 
 ---
 
-## 5️⃣ Grafana 可视化配置
+#### **效果验证**
+
+1. Grafana 添加数据源 → 选择 Prometheus（阿里云）  
+2. 选择数据源 `prom-xxx`  
+3. PromQL 查询示例：
+
+```promeql
+cpu{namespace="default"}
+```
+
+```
+[grafana-ns.png](../resource/images/grafana-ns.png)
+```
+
+---
+
+#### **注意事项**
+
+| 场景               | 推荐操作            |
+|------------------|------------------|
+| 同 Region 内数据接入   | 使用阿里云自动数据源 |
+| 跨 Region 数据看板 | 多数据源聚合接入   |
+| 自建 Grafana      | 可用 API 或手动地址配置 |
+
+---
+---
+
+## 5 Grafana 可视化配置
 
 ### 5.1 内置官方大盘效果
 
@@ -270,23 +307,22 @@ avg(AliyunRds_MemoryUsage{engine="MySQL"}) by (regionId,instanceId)
 avg(AliyunRds_DiskUsage{engine="MySQL"}) by (regionId,instanceId)
 ```
 
-**前端访问日志（5xx 错误统计）**
+**用户体验监控访问日志（状态错误统计）**
 
 ```sql
-sum_over_time(nginx_5xx_count[5m])
-```
+sum by (resourceName, resourceStatusCode) (
+  increase(resource_duration_count{appEnv="prod"}[$__range])
+)```
 
 **仪表盘样例效果：**
 
 ```md
-![ECS 总览](img/dashboard_ecs.png)
-![RDS 健康](img/dashboard_rds.png)
-![前端日志](img/dashboard_sls.png)
+![grafana-demo.png](../resource/images/grafana-demo.png)
 ```
 
 ---
 
-## 6️⃣ 验证步骤与截图占位
+## 6 . 建议步骤
 
 | 验证目标    | 操作方式           | 预期效果            |
 | ------- | -------------- | --------------- |
@@ -295,38 +331,15 @@ sum_over_time(nginx_5xx_count[5m])
 | SLS 指标  | MetricStore 确认 | Prometheus 成功采集 |
 | Grafana | 可视化检查          | 多数据源大盘可见        |
 
-```md
-![应用链路验证](img/app_metrics.png)
-![SLS 指标验证](img/sls_metrics.png)
-![Grafana 界面](img/grafana_result.png)
-```
-
----
-
-## 7️⃣ 效果展示示例
-
-* 统一入口 Grafana
-* 按业务线 / 服务视角拆分
-* 应用 / 主机 / 数据库 / 日志 各有专属 Panel
-* 报表导出、告警联动飞书 / 钉钉
-
-**整体效果预期图示**（请根据实际效果补充截图）：
-
-```md
-![Dashboard 效果](img/overall_dashboard.png)
-```
-
 ---
 
 ## 8️⃣ 参考链接与资料
 
-| 名称            | 地址                                                                                                          |
-| ------------- | ----------------------------------------------------------------------------------------------------------- |
-| 阿里云 ARMS 官方文档 | [https://help.aliyun.com/document_detail/275849.html](https://help.aliyun.com/document_detail/275849.html) |
-| OpenTelemetry | [https://opentelemetry.io/](https://opentelemetry.io/)                                                      |
-| Grafana 官方文档  | [https://grafana.com/docs/grafana/latest/](https://grafana.com/docs/grafana/latest/)                        |
-| SLS 官方文档      | [https://help.aliyun.com/document_detail/29060.html](https://help.aliyun.com/document_detail/29060.html)   |
-| 容器服务 ACK 和容器计算服务 ACS 通过 ack-onepilot 组件安装 Go 探针| [https://help.aliyun.com/zh/arms/application-monitoring/user-guide/install-arms-agent-for-golang-applications-deployed-in-ack-and-acs]
-    (https://help.aliyun.com/zh/arms/application-monitoring/user-guide/install-arms-agent-for-golang-applications-deployed-in-ack-and-acs)  
-
----
+| 名称                                             | 地址                                                                                                          |
+|------------------------------------------------| ----------------------------------------------------------------------------------------------------------- |
+| 阿里云可观测编写案例                                     | [https://sls.aliyun.com/doc/](https://sls.aliyun.com/doc/) |
+| 将Logstore中的日志字段转换MetricStore中的度量指标             | [https://help.aliyun.com/zh/sls/convert-logs-to-metrics](https://help.aliyun.com/zh/sls/convert-logs-to-metrics)                                                      |
+| Grafana 官方文档                                   | [https://grafana.com/docs/grafana/latest/](https://grafana.com/docs/grafana/latest/)                        |
+| SLS查询语法与功能| [https://help.aliyun.com/document_detail/29060.html](https://help.aliyun.com/document_detail/29060.html)   |
+| 容器服务 ACK 和容器计算服务 ACS 通过 ack-onepilot 组件安装 Go 探针 | [https://help.aliyun.com/zh/arms/application-monitoring/user-guide/install-arms-agent-for-golang-applications-deployed-in-ack-and-acs]
+    
