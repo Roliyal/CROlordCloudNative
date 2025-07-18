@@ -163,7 +163,7 @@ docker run --rm -p 8084:8084 myapp-arm-agent
     * `AliyunRds_MemoryUsage`
     * `AliyunSlb_connections`
 > 例如 云产品监控指标 ，均可参考文档 [附录1 云产品监控指标](https://help.aliyun.com/zh/cms/cloudmonitor-1-0/support/appendix-1-metrics)
-![ecs-cloud-metric.png](../resource/images/ecs-cloud-metric.png)
+[ecs-cloud-metric.png](../resource/images/ecs-cloud-metric.png)
 ---
 
 
@@ -225,7 +225,7 @@ avg_over_time(ResponseTime[5m])
 ```
 
 ```md
-![SLS 指标验证](img/sls_metrics.png)
+[SLS 指标验证](img/sls_metrics.png)
 ```
 
 ---
@@ -317,12 +317,13 @@ sum by (resourceName, resourceStatusCode) (
 **仪表盘样例效果：**
 
 ```md
-![grafana-demo.png](../resource/images/grafana-demo.png)
+
+[grafana-demo.png](../resource/images/grafana-demo.png)
 ```
 
 ---
 
-## 6 . 建议步骤
+## 6. 建议步骤
 
 | 验证目标    | 操作方式           | 预期效果            |
 | ------- | -------------- | --------------- |
@@ -333,7 +334,7 @@ sum by (resourceName, resourceStatusCode) (
 
 ---
 
-## 8️⃣ 参考链接与资料
+## 8. 参考链接与资料
 
 | 名称                                             | 地址                                                                                                          |
 |------------------------------------------------| ----------------------------------------------------------------------------------------------------------- |
