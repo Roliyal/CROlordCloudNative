@@ -118,5 +118,4 @@
 </div>
 
 ---
-![img.png](resource/images/Dingcode.png)
 欢迎 star 🌟、fork 🍴、issue 💬 与 PR 🤝！
