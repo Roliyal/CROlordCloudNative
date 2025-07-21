@@ -24,37 +24,31 @@
 
 ### 第2章 阿里云 Kubernetes 应用部署
 - 2.0 ACK 一些初始化
-- 2.1 配置 CICD 环境优化配置
-- 2.2 GO + VUE 单体应用分离部署
-- 2.3 微服务猜数字部署实践
-- 2.4 JAVA 微服务部署
-- 2.5 ACK 有状态应用部署
-- 2.6 小结
+- 2.1 配置CICD环境优化配置
+- 2.2 Monolithic application GO VUE项目前后分离部署 ACK 环境
+- 2.3 Monolithic application GO VUE项目前后分离部署 ACK 环境
+- 2.4 Micro services JAVA微服务部署 ACK 环境
 
 ### 第3章 下一代 Serverless(SAE) 应用构建
 - 3.1 配置 SAE Jenkins 环境
-- 3.2 GO + VUE 单体应用部署 SAE
-- 3.3 GO + VUE 微服务部署 SAE
-- 3.4 小结
+- 3.2 Monolithic application GO VUE项目前后分离部署 部署 SAE 环境
+- 3.4 Monolithic application GO VUE项目前后分离部署 部署 SAE 环境
 
 ### 第4章 微服务治理实践与挑战
-- 4.1 基于阿里云 MSE 实现 Go 服务全链路灰度发布
-- 4.2 基于 MSE 云原生网关实现 VUE 前端灰度发布
+- 4.1 基于阿里云 MSE 实现 Go 服务全链路灰度发布 — 从代码到生产的全流程
+- 4.2 基于 MSE 云原生网关实现VUE前端灰度发布
 - 4.3 配置限流熔断环境
 - 4.4 安全防护与优雅上下线配置指南
-- 4.5 小结
 
 ### 第5章 可观测思考与实践
 - 5.1 使用 Helm 安装 Prometheus Server（远程写入）
-- 5.2 ARMS 实现端到端全链路追踪
-- 5.3 SLS 收集 ACK 日志实践
-- 5.4 构建 Prometheus + SLS + 云监控的 Grafana 大盘
-- 5.5 小结
+- 5.2 基于阿里云 ARMS 的端到端可观测全链路追踪
+- 5.3 基于 SLS 收集 ACK 业务日志实践（LoongCollector AliyunPipelineConfig）
+- 5.4 基于阿里云 Prometheus、SLS 与云监控构建多数据源 Grafana 监控大盘
+
 
 ### 第6章 应用高可用与性能压测
-- 6.1 基于阿里云 PTS 的压测方案（登录 + 操作 + 查询）
-- 6.2 ACK 弹性调度优化
-- 6.3 小结
+- 6.1  基于阿里云 PTS 压测场景（登录 + 游戏操作 + 查询积分）
 
 ### 第7章 解决方案啊
 - 7.1 附录 解决方案
