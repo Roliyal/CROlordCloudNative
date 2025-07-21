@@ -114,9 +114,9 @@
 ## 浅聊摸鱼之道 · Work-Life Balance
 
 <div style="display: flex; flex-direction: row;">
-  <img src="resource/images/code.png" alt="鳄霸日常" width="150" height="200" style="margin-right: 10px;">
+  <img src="resource/images/Dingcode.png" alt="鳄霸日常" width="150" height="200" style="margin-right: 10px;">
 </div>
 
 ---
-
+![img.png](resource/images/Dingcode.png)
 欢迎 star 🌟、fork 🍴、issue 💬 与 PR 🤝！
