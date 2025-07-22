@@ -127,7 +127,7 @@ Cookie: AuthToken=${authToken}; X-User-ID=${userId}; x-pre-higress-tag=base
 **请求 Body 示例：**
 ```json
 {
-  "guess": ${guessValue}
+  "guess": "${guessValue}"
 }
 ```
 
