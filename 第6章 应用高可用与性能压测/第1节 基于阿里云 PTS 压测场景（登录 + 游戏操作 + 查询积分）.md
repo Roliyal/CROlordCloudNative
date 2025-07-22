@@ -153,12 +153,12 @@ Cookie: AuthToken=${authToken}; X-User-ID=${userId}; x-pre-higress-tag=base
 
 ## 5. 验证步骤与预期结果
 
-| 验证目标       | 操作描述                    | 预期结果                  |
-|-----------|---------------------------|------------------------|
+| 验证目标       | 操作描述                                  | 预期结果                  |
+|-----------|---------------------------------------|------------------------|
 | 参数注入成功     | username / password / guessValue 正确注入 | 各请求可正确读取数据源 |
-| 登录链路       | 登录请求成功，返回 token / userId | 返回 JSON 含 authToken / userId |
-| 游戏链路       | 请求带 token，参数 guessValue 合法 | 返回 200 且包含 message 字段 |
-| 积分查询链路    | 请求通畅，返回排行榜数据 | HTTP 状态码 200，无错误响应 |
+| 登录链路       | 登录请求成功，返回 token / userId              | 返回 JSON 含 authToken / userId |
+| 游戏链路       | 请求带 token，参数 guessValue 合法            | 返回 200 且包含 message 字段 |
+| 积分查询链路    | 请求正常，返回排行榜数据                          | HTTP 状态码 200，无错误响应 |
 
 ---
 
