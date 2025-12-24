@@ -184,7 +184,7 @@ func main() {
 }
 ```
 
-### 5.2 Dockerfile（你提供的版本）
+### 5.2 Dockerfile
 
 ```dockerfile
 FROM golang:1.24 AS build
@@ -327,7 +327,7 @@ spec:
 
 ---
 
-## 8. Prometheus 选择规则（Selector）与你环境的关键点
+## 8. Prometheus 选择规则（Selector）与环境的关键点
 
 输出过 Prometheus CR（节选）：
 
