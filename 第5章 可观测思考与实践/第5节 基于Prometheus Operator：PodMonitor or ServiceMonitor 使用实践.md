@@ -88,12 +88,12 @@ PROM -->|"scrape /metrics"| PODS
 
 ### 4.1 推荐结论（生产经验）
 
-* **默认优先用 ServiceMonitor** ✅
+* **默认优先用 ServiceMonitor** 
 
   * Service 提供稳定的发现入口
   * 与服务治理/负载均衡/端口治理更一致
   * 适合大多数业务服务
-* **PodMonitor 在这些场景更合适** ✅
+* **PodMonitor 在这些场景更合适** 
 
   * 没有 Service（短任务、临时 Pod、或不希望暴露 Service）
   * 需要抓 **Pod 的特定端口/sidecar**（比如一个 Pod 内多个容器、多个 metrics 端口）
@@ -535,6 +535,8 @@ ports:
 
 ## 11. 参考链接
 
+* CROLord 代码示例
+  [https://github.com/Roliyal/CROlordCodelibrary/](https://github.com/Roliyal/CROlordCodelibrary/tree/main/Chapter5MicroserviceObservability/Unit5CodeLibrary/PromethuesMonitor)
 * Prometheus Operator（kube-prometheus-stack）相关 CRD：ServiceMonitor / PodMonitor
   [https://github.com/prometheus-operator/prometheus-operator](https://github.com/prometheus-operator/prometheus-operator)
 * Prometheus client_golang（Go 指标库）
