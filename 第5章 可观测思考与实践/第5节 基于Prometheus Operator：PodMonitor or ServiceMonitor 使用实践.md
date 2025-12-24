@@ -7,11 +7,10 @@
 5. Demo：Go 暴露 /metrics（代码 + Dockerfile）
 6. Demo：K8s 部署清单（Namespace/Deployment/Service/ServiceMonitor）
 7. （可选）改为 PodMonitor 的写法
-8. Prometheus 选择规则（Selector）与你环境的关键点
+8. Prometheus 选择规则（Selector）与环境的关键点
 9. 验证与排查（从 Pod → Target → PromQL）
 10. 常见错误与排障手册
 11. 参考链接
-
 
 ## 1. 背景与目标
 
@@ -22,7 +21,7 @@
 * 用一个 **Go 应用**暴露 Prometheus 指标（`/metrics`）
 * 在 K8s 中通过 **ServiceMonitor 或 PodMonitor**让 Prometheus 自动发现并采集
 * 完整示例 **部署 YAML**、**参数解释**、**验证步骤**与 **PromQL 示例**
-* 取舍：**PodMonitor vs ServiceMonitor** 的使用场景与取舍
+* 取舍：**PodMonitor vs ServiceMonitor** 的使用场景
 
 ---
 
@@ -44,28 +43,34 @@
 ```mermaid
 flowchart TB
 
-subgraph K8S[Kubernetes Cluster]
+classDef nsDemo fill:#E8F4FF,stroke:#2B6CB0,stroke-width:1px,color:#111827;
+classDef nsMon fill:#E9FBEA,stroke:#2F855A,stroke-width:1px,color:#111827;
+classDef obj fill:#FFF7E6,stroke:#B7791F,stroke-width:1px,color:#111827;
+
+subgraph K8S["Kubernetes Cluster"]
   direction TB
 
-  subgraph APPNS[Namespace: demo]
+  subgraph APPNS["Namespace: demo"]
     direction TB
-    PODS[Pods: demo-go (replicas=2)\nExpose :8080/metrics]
-    SVC[Service: demo-go\nport 8080 name=metrics]
+    PODS["Pods demo-go<br/>replicas=2<br/>Expose :8080/metrics"]:::obj
+    SVC["Service demo-go<br/>port=8080 name=metrics"]:::obj
     PODS --> SVC
   end
 
-  subgraph MONNS[Namespace: monitoring]
+  subgraph MONNS["Namespace: monitoring"]
     direction TB
-    SM[ServiceMonitor: demo-go\nselect Service by label app=demo-go]
-    PM[PodMonitor (optional)\nselect Pod by label app=demo-go]
-    PROM[Prometheus (Operator Managed)\nSelector: release=prometheus]
+    SM["ServiceMonitor demo-go<br/>select Service label app=demo-go"]:::obj
+    PM["PodMonitor optional<br/>select Pod label app=demo-go"]:::obj
+    PROM["Prometheus (Operator Managed)<br/>selector release=prometheus"]:::obj
   end
-
 end
 
-SM -->|Operator generates scrape config| PROM
-PM -.->|Optional path| PROM
-PROM -->|scrape /metrics| PODS
+APPNS:::nsDemo
+MONNS:::nsMon
+
+SM -->|"Operator generates scrape config"| PROM
+PM -.->|"Optional path"| PROM
+PROM -->|"scrape /metrics"| PODS
 
 ```
 
@@ -85,23 +90,23 @@ PROM -->|scrape /metrics| PODS
 
 * **默认优先用 ServiceMonitor** ✅
 
-    * Service 提供稳定的发现入口
-    * 与服务治理/负载均衡/端口治理更一致
-    * 适合大多数业务服务
-
+  * Service 提供稳定的发现入口
+  * 与服务治理/负载均衡/端口治理更一致
+  * 适合大多数业务服务
 * **PodMonitor 在这些场景更合适** ✅
 
-    * 没有 Service（短任务、临时 Pod、或不希望暴露 Service）
-    * 需要抓 **Pod 的特定端口/sidecar**（比如一个 Pod 内多个容器、多个 metrics 端口）
-    * 需要更细粒度按 Pod 维度抓取（不经 Service）
+  * 没有 Service（短任务、临时 Pod、或不希望暴露 Service）
+  * 需要抓 **Pod 的特定端口/sidecar**（比如一个 Pod 内多个容器、多个 metrics 端口）
+  * 需要更细粒度按 Pod 维度抓取（不经 Service）
 
 ### 4.2 二者差异对比表
 
-| 维度    | ServiceMonitor                                                | PodMonitor                                                           |
-| ----- | ------------------------------------------------------------- | -------------------------------------------------------------------- |
-| 发现对象  | Service（再映射到 Endpoint/Pod）                                    | Pod                                                                  |
-| 适用范围  | 绝大多数业务服务（推荐）                                                  | 无 Service / sidecar / 多端口特殊情况                                        |
-| 变更稳定性 | 稳（Service 抽象稳定）                                               | 更灵活但更“直接”                                                            |
+
+| 维度       | ServiceMonitor                                                       | PodMonitor                                                                     |
+| ---------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| 发现对象   | Service（再映射到 Endpoint/Pod）                                     | Pod                                                                            |
+| 适用范围   | 绝大多数业务服务（推荐）                                             | 无 Service / sidecar / 多端口特殊情况                                          |
+| 变更稳定性 | 稳（Service 抽象稳定）                                               | 更灵活但更“直接”                                                             |
 | 配置关键点 | `spec.selector` 选 Service 标签 + `endpoints.port` 选 Service 端口名 | `spec.selector` 选 Pod 标签 + `podMetricsEndpoints.targetPort` 选容器端口名/号 |
 
 ---
@@ -363,6 +368,7 @@ kubectl run -n demo curl --rm -it --image=curlimages/curl --restart=Never \
 看到 `# HELP` / `# TYPE` 以及 `demo_build_info` 等，就说明应用 OK。
 
 ---
+
 ![img.png](../resource/images/promethues_go.png)
 
 ### 9.2 验证 2：Service 是否正确指向 Pod（ServiceMonitor 路线）
@@ -373,7 +379,8 @@ kubectl get endpoints -n demo demo-go -o wide
 ```
 
 * endpoints 里能看到 Pod IP:8080 说明 Service 选中了 Pod
-![img.png](../resource/images/promethues_go_svc.png)
+  ![img.png](../resource/images/promethues_go_svc.png)
+
 ---
 
 ### 9.3 验证 3：确认 ServiceMonitor / PodMonitor 被 Prometheus 选中
@@ -398,9 +405,9 @@ kubectl get prometheus -n monitoring -o yaml | grep -nE "serviceMonitorSelector|
 * **Status → Targets**
 * 找到 job 对应条目：
 
-    * Prometheus监控/接入管理/「选择目标集群」`/自监控..
-    * ServiceMonitor 一般 job 类似：`serviceMonitor/<ns>/<name>/...`
-    * PodMonitor 一般 job 类似：`podMonitor/<ns>/<name>/...`
+  * Prometheus监控/接入管理/「选择目标集群」`/自监控..
+  * ServiceMonitor 一般 job 类似：`serviceMonitor/<ns>/<name>/...`
+  * PodMonitor 一般 job 类似：`podMonitor/<ns>/<name>/...`
 
 关键看：
 
@@ -409,7 +416,9 @@ kubectl get prometheus -n monitoring -o yaml | grep -nE "serviceMonitorSelector|
 * Scrape error 是否为空
 
 ---
+
 ![img.png](../resource/images/promethues_go_state.png)
+
 ### 9.5 验证 5：PromQL 验证指标是否进来
 
 #### 1）最简单：看 up
@@ -433,6 +442,7 @@ demo_build_info
 ```
 
 ![img.png](../resource/images/promethues_go_done.png)
+
 #### 3）验证请求计数（先压测 /hello）
 
 先在集群里跑一次请求：
@@ -447,7 +457,9 @@ kubectl run -n demo curl2 --rm -it --image=curlimages/curl --restart=Never \
 ```promql
 sum(rate(demo_http_requests_total[1m]))
 ```
+
 ![img.png](../resource/images/promethues_demo_total.png)
+
 #### 4）验证延迟直方图（P95 示例）
 
 ```promql
@@ -456,8 +468,9 @@ histogram_quantile(
   sum(rate(demo_http_request_duration_seconds_bucket[5m])) by (le)
 )
 ```
+
 ![img.png](../resource/images/promethues_go_p95.png)
----
+----------------------------------------------------
 
 ## 10. 常见坑与排障手册
 
@@ -469,12 +482,11 @@ histogram_quantile(
 
 1. **Prometheus TSDB 有历史数据**
 
-    * 删除采集配置后，历史时间序列不会立刻消失
-    * 查询窗口包含过去时间，就能查到
-
+   * 删除采集配置后，历史时间序列不会立刻消失
+   * 查询窗口包含过去时间，就能查到
 2. PromQL 没限制时间范围
 
-    * 在 Graph UI 里如果选了较长时间范围，会看到历史
+   * 在 Graph UI 里如果选了较长时间范围，会看到历史
 
 排查建议：
 
