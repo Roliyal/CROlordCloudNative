@@ -96,6 +96,11 @@ kubectl get node
 
 您可以获取这个脚本并在本地执行。它良好的文档会让您在执行之前知道脚本都做了什么。
 
+前置安装 Docker-ce 
+```shell
+echo -e "[docker-ce-stable]\nname=Docker CE Stable - \$basearch\nbaseurl=https://mirrors.aliyun.com/docker-ce/linux/centos/7/\$basearch/stable\nenabled=1\ngpgcheck=1\ngpgkey=https://mirrors.aliyun.com/docker-ce/linux/centos/gpg" | sudo tee /etc/yum.repos.d/docker-ce.repo && sudo yum clean all && sudo yum makecache && sudo yum install -y docker-ce && sudo systemctl start docker && sudo systemctl enable docker
+```
+
 ```shell
 curl -fsSL -o get_helm.sh https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
 chmod 700 get_helm.sh
@@ -1095,3 +1100,5 @@ docker-compose up -d
 
 此处 Jenkins 名为容器名，根据实际情况灵活变动。
 至此，整个Jenkins配置完成，后续插件配置使用以及 CI/CD 链路在后续章节展示。
+
+
