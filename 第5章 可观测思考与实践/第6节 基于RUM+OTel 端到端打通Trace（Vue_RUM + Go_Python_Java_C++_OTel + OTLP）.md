@@ -1,39 +1,39 @@
 > 目标：完成 **前端 RUM** 与 **多语言后端 OTel Trace** 的上下文透传与统一检索；实现 **Metrics / Logs / Traces 三件套** 互相跳转定位；Trace 协议：默认采用 **W3C TraceContext（traceparent / tracestate）**。([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/signals/traces/?utm_source=chatgpt.com))
->
 
 ---
 
 ## 目录
+
 + [1. 仓库结构与组件职责](#1-仓库结构与组件职责)
 + [2. 总体架构与调用链](#2-总体架构与调用链)
 + [3. 统一术语表（必读）](#3-统一术语表必读)
 + [4. 全局接入规范](#4-全局接入规范)
-    - [4.1 统一 Header 与字段约定](#41-统一-header-与字段约定)
-    - [4.2 OTLP 端点规范](#42-otlp-端点规范)
-    - [4.3 CORS 注意事项（RUM 透传）](#43-cors-注意事项rum-透传)
+  - [4.1 统一 Header 与字段约定](#41-统一-header-与字段约定)
+  - [4.2 OTLP 端点规范](#42-otlp-端点规范)
+  - [4.3 CORS 注意事项（RUM 透传）](#43-cors-注意事项rum-透传)
 + [5. 前端（Vite + Vue3）RUM + TraceContext](#5-前端vite--vue3rum--tracecontext)
-    - [5.1 RUM 初始化（src/main.js / src/rum.js）](#51-rum-初始化srcmainjs--srcrumjs)
-    - [5.2 业务事件/异常与后端 Trace 绑定（src/api.js）](#52-业务事件异常与后端-trace-绑定srcapijs)
-    - [5.3 页面示例（src/App.vue）](#53-页面示例srcappvue)
-    - [5.4 Vite 代理与 Sourcemap](#54-vite-代理与-sourcemap)
-    - [5.5 验证（Network / RUM / Trace 联动）](#55-验证network--rum--trace-联动)
+  - [5.1 RUM 初始化（src/main.js / src/rum.js）](#51-rum-初始化srcmainjs--srcrumjs)
+  - [5.2 业务事件/异常与后端 Trace 绑定（src/api.js）](#52-业务事件异常与后端-trace-绑定srcapijs)
+  - [5.3 页面示例（src/App.vue）](#53-页面示例srcappvue)
+  - [5.4 Vite 代理与 Sourcemap](#54-vite-代理与-sourcemap)
+  - [5.5 验证（Network / RUM / Trace 联动）](#55-验证network--rum--trace-联动)
 + [6. Go 网关（go-gateway）OTel + OTLP + 透传](#6-go-网关go-gatewayotel--otlp--透传)
-    - [6.1 关键点（Server span / Client span / 显式注入）](#61-关键点server-span--client-span--显式注入)
-    - [6.2 完整代码（go-gateway/main.go）](#62-完整代码go-gatewaymaingo)
-    - [6.3 验证与日志观测](#63-验证与日志观测)
+  - [6.1 关键点（Server span / Client span / 显式注入）](#61-关键点server-span--client-span--显式注入)
+  - [6.2 完整代码（go-gateway/main.go）](#62-完整代码go-gatewaymaingo)
+  - [6.3 验证与日志观测](#63-验证与日志观测)
 + [7. Python 服务（python-svc）Flask + OTel + OTLP + 透传](#7-python-服务python-svcflask--otel--otlp--透传)
-    - [7.1 完整代码（python-svc/app.py）](#71-完整代码python-svcapppy)
-    - [7.2 依赖（python-svc/requirements.txt）](#72-依赖python-svcrequirementstxt)
-    - [7.3 验证](#73-验证)
+  - [7.1 完整代码（python-svc/app.py）](#71-完整代码python-svcapppy)
+  - [7.2 依赖（python-svc/requirements.txt）](#72-依赖python-svcrequirementstxt)
+  - [7.3 验证](#73-验证)
 + [8. Java 服务（java-svc）Spark + OTel Autoconfigure + 透传 + 日志 MDC](#8-java-服务java-svcspark--otel-autoconfigure--透传--日志-mdc)
-    - [8.1 完整代码（App.java）](#81-完整代码appjava)
-    - [8.2 Logback JSON Pattern（logback.xml）](#82-logback-json-patternlogbackxml)
-    - [8.3 Maven（pom.xml）](#83-mavenpomxml)
-    - [8.4 验证](#84-验证)
+  - [8.1 完整代码（App.java）](#81-完整代码appjava)
+  - [8.2 Logback JSON Pattern（logback.xml）](#82-logback-json-patternlogbackxml)
+  - [8.3 Maven（pom.xml）](#83-mavenpomxml)
+  - [8.4 验证](#84-验证)
 + [9. C++ 服务（cpp-svc）httplib + opentelemetry-cpp + OTLP/HTTP + 透传](#9-c-服务cpp-svchttplib--opentelemetry-cpp--otlphttp--透传)
-    - [9.1 CMakeLists.txt](#91-cmakeliststxt)
-    - [9.2 完整代码（cpp-svc/main.cpp）](#92-完整代码cpp-svcmaincpp)
-    - [9.3 验证](#93-验证)
+  - [9.1 CMakeLists.txt](#91-cmakeliststxt)
+  - [9.2 完整代码（cpp-svc/main.cpp）](#92-完整代码cpp-svcmaincpp)
+  - [9.3 验证](#93-验证)
 + [10. 三件套联动：指标/日志/Trace 如何互相跳转定位](#10-三件套联动指标日志trace-如何互相跳转定位)
 + [11. 常见问题与排障清单](#11-常见问题与排障清单)
 + [12. 参考链接](#12-参考链接)
@@ -41,7 +41,9 @@
 ---
 
 ## 1. 仓库结构与组件职责
-### 1.1 `tree -L `（代码结构）
+
+### 1.1 `tree -L 3`（代码结构）
+
 ```latex
 .
 ├── README.md
@@ -132,6 +134,7 @@
 ```
 
 ### 1.2 各模块职责
+
 + **frontend**：RUM 采集（性能/错误/资源/API）+ TraceContext 注入（`traceparent`），并将后端返回的 `trace_id/span_id` 写入自定义事件/异常，形成端到端检索闭环。([阿里云帮助中心](https://help.aliyun.com/zh/arms/user-experience-monitoring/use-cases/trace-associated-with-rum-monitoring))
 + **go-gateway**：入口服务，负责接收来自前端的 `traceparent`，创建 Server Span，并对下游 Python 发起 Client 请求时透传上下文（自动 + 显式注入双保险）。
 + **python-svc**：Flask 自动提取上下文（instrumentation），向 Java 下游透传。
@@ -141,8 +144,8 @@
 ---
 
 ## 2. 总体架构与调用链
-### 2.1 架构图（Mermaid）
 
+### 2.1 架构图（Mermaid）
 
 ```mermaid
 flowchart TB
@@ -164,58 +167,66 @@ flowchart TB
 ```
 
 ### 2.2 关键链路说明
+
 + **前端 RUM** 对 `/api/*` 请求自动注入 `traceparent`（W3C TraceContext），后端从 header 中提取并建立同一条 Trace。([阿里云帮助中心](https://help.aliyun.com/zh/arms/user-experience-monitoring/use-cases/trace-associated-with-rum-monitoring?utm_source=chatgpt.com))
 + **OTLP 上报**：各后端服务通过 OTLP/HTTP exporter 发送 Trace 到统一后端（或 Collector）。OTLP 端点环境变量与信号路径规则参考 OTel 文档。([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/sdk-configuration/otlp-exporter-configuration))
 
 ---
 
 ## 3. 统一术语表（必读）
-| 术语 | 含义 | 关键点 |
-| --- | --- | --- |
-| Trace | 一次端到端请求的完整链路 | 由多个 Span 构成 |
-| Span | Trace 中的一个操作片段 | server/client/internal 等 |
-| trace_id | Trace 的唯一标识 | 32 hex（128bit） |
-| span_id | Span 的唯一标识 | 16 hex（64bit） |
-| traceparent | W3C TraceContext header | `00-<traceid>-<spanid>-<flags>`([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/signals/traces)) |
-| tracestate | W3C 扩展 header | RUM 可选择透传([阿里云帮助中心](https://help.aliyun.com/zh/arms/user-experience-monitoring/use-cases/trace-associated-with-rum-monitoring)) |
-| Propagation | 上下文传播 | extract / inject |
-| OTLP | OpenTelemetry Protocol | 支持 gRPC/HTTP([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/)) |
-| OTEL_EXPORTER_OTLP_ENDPOINT | OTLP 基础端点 | OTLP/HTTP 下会拼接 `/v1/traces` 等([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/)) |
-| OTEL_EXPORTER_OTLP_TRACES_ENDPOINT | 仅 traces 的端点 | 优先级高于 ENDPOINT([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/)) |
-| RUM | Real User Monitoring | 浏览器端采集与 Trace 关联([阿里云帮助中心](https://help.aliyun.com/zh/arms/user-experience-monitoring/use-cases/trace-associated-with-rum-monitoring)) |
 
+
+| 术语                               | 含义                     | 关键点                                                                                                                                                      |
+| ---------------------------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Trace                              | 一次端到端请求的完整链路 | 由多个 Span 构成                                                                                                                                            |
+| Span                               | Trace 中的一个操作片段   | server/client/internal 等                                                                                                                                   |
+| trace_id                           | Trace 的唯一标识         | 32 hex（128bit）                                                                                                                                            |
+| span_id                            | Span 的唯一标识          | 16 hex（64bit）                                                                                                                                             |
+| traceparent                        | W3C TraceContext header  | `00-<traceid>-<spanid>-<flags>`([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/signals/traces))                                   |
+| tracestate                         | W3C 扩展 header          | RUM 可选择透传([阿里云帮助中心](https://help.aliyun.com/zh/arms/user-experience-monitoring/use-cases/trace-associated-with-rum-monitoring))                 |
+| Propagation                        | 上下文传播               | extract / inject                                                                                                                                            |
+| OTLP                               | OpenTelemetry Protocol   | 支持 gRPC/HTTP([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/))                    |
+| OTEL_EXPORTER_OTLP_ENDPOINT        | OTLP 基础端点            | OTLP/HTTP 下会拼接`/v1/traces` 等([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/)) |
+| OTEL_EXPORTER_OTLP_TRACES_ENDPOINT | 仅 traces 的端点         | 优先级高于 ENDPOINT([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/))               |
+| RUM                                | Real User Monitoring     | 浏览器端采集与 Trace 关联([阿里云帮助中心](https://help.aliyun.com/zh/arms/user-experience-monitoring/use-cases/trace-associated-with-rum-monitoring))      |
 
 ---
 
 ## 4. 全局接入规范
+
 ### 4.1 统一 Header 与字段约定
+
 + 上下文透传：`traceparent`（必须），`tracestate`（可选，RUM tracing 默认可开启）。([阿里云帮助中心](https://help.aliyun.com/zh/arms/user-experience-monitoring/use-cases/trace-associated-with-rum-monitoring))
 + 后端 JSON 响应：统一返回（至少用于 demo 验证）
-    - `trace_id`
-    - `span_id`
-    - `traceparent_in`（可选：回显入站 traceparent 便于对照）
+  - `trace_id`
+  - `span_id`
+  - `traceparent_in`（可选：回显入站 traceparent 便于对照）
 + 前端业务事件/异常：在 `properties` 内写入
-    - `backend_trace_id`
-    - `backend_span_id`
-    - `backend_time`
+  - `backend_trace_id`
+  - `backend_span_id`
+  - `backend_time`
 
 ### 4.2 OTLP 端点规范
+
 OTLP/HTTP 常见规则（核心要点）：
 
 + 若仅设置 `OTEL_EXPORTER_OTLP_ENDPOINT`，OTLP/HTTP exporter 会按信号构造 URL（如 traces => `/v1/traces`）。([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/))
 + `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` 可覆盖 traces 的完整 URL（建议用于“适配网关/路径固定”的场景）。([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/))
 
 > Go 的 `otlptracehttp.WithEndpointURL(...)` 允许直接传完整 URL（含 scheme/host/path），并且环境变量也可提供默认值。([Go Packages](https://pkg.go.dev/go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp))
->
 
 ### 4.3 CORS 注意事项（RUM 透传）
+
 `traceparent/tracestate/baggage` 等不属于 CORS safelist header。跨域请求需服务端显式放行 `Access-Control-Allow-Headers`，否则浏览器会拦截。([阿里云帮助中心](https://help.aliyun.com/zh/arms/user-experience-monitoring/use-cases/trace-associated-with-rum-monitoring))
 
 ---
 
 ## 5. 前端（Vite + Vue3）RUM + TraceContext
+
 ### 5.1 RUM 初始化（`src/main.js` / `src/rum.js`）
+
 #### 5.1.1 关键配置高亮（diff）
+
 ```diff
  ArmsRum.init({
      pid,
@@ -244,6 +255,7 @@ OTLP/HTTP 常见规则（核心要点）：
 + `tracing.enable/sample/allowedUrls/propgatorTypes` 语义与官方说明一致：开启链路追踪后，RUM 会对匹配 URL 注入 Trace 透传 header。([阿里云帮助中心](https://help.aliyun.com/zh/arms/user-experience-monitoring/use-cases/trace-associated-with-rum-monitoring))
 
 #### 5.1.2 `frontend/src/main.js`（完整代码）
+
 ```javascript
 globalThis.global ||= globalThis
 
@@ -303,6 +315,7 @@ createApp(App).mount('#app')
 ```
 
 #### 5.1.3 `frontend/src/rum.js`（完整代码）
+
 ```javascript
 import armsRum from "@arms/rum-browser";
 
@@ -349,12 +362,13 @@ export { armsRum };
 ```
 
 > 说明：`src/main.js` 已直接 init；`src/rum.js` 提供“封装式 init”。两者通常二选一，避免重复 init。
->
 
 ---
 
 ### 5.2 业务事件/异常与后端 Trace 绑定（`src/api.js`）
+
 #### 5.2.1 关键点（diff）
+
 ```diff
  export function sendBizEvent(name, properties = {}) {
      const ctx = getLastBackendTrace();
@@ -390,6 +404,7 @@ export { armsRum };
 ```
 
 #### 5.2.2 `frontend/src/api.js`（完整代码）
+
 ```javascript
 import { armsRum } from "./rum";
 
@@ -477,6 +492,7 @@ export async function callHelloApi({ manualTraceparent = "" } = {}) {
 ---
 
 ### 5.3 页面示例（`src/App.vue`）
+
 ```vue
 <script setup>
 import { ref } from 'vue'
@@ -548,7 +564,9 @@ function sendBizCustomEvent() {
 ---
 
 ### 5.4 Vite 代理与 Sourcemap
+
 #### `frontend/vite.config.js`
+
 ```javascript
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
@@ -568,6 +586,7 @@ export default defineConfig({
 ```
 
 #### `frontend/index.html`
+
 ```html
 <!doctype html>
 <html lang="zh-CN">
@@ -585,6 +604,7 @@ export default defineConfig({
 ```
 
 #### `frontend/package.json`
+
 ```json
 {
   "name": "arms-rum-vite-vue-demo",
@@ -610,25 +630,31 @@ export default defineConfig({
 ---
 
 ### 5.5 验证（Network / RUM / Trace 联动）
+
 #### 5.5.1 浏览器 Network 验证
+
 1. 打开 DevTools → Network
 2. 点击页面按钮触发 `/api/hello`
 3. 查看 Request Headers：应包含 `traceparent`（及可选 `tracestate`）([阿里云帮助中心](https://help.aliyun.com/zh/arms/user-experience-monitoring/use-cases/trace-associated-with-rum-monitoring))
 
 #### 5.5.2 控制台验证（RUM  Trace）
+
 + 在 RUM 侧找到对应 API 请求条目 → “查看调用链 / 查看 Trace”
 + 顶部 Span 通常为 RUM 入口 Span（官方说明：Web & H5 的 Span 前缀 `browser.request:`）。([阿里云帮助中心](https://help.aliyun.com/zh/arms/user-experience-monitoring/use-cases/trace-associated-with-rum-monitoring))
 
 ---
 
 ## 6. Go 网关（go-gateway）OTel + OTLP + 透传
+
 ### 6.1 关键点（Server span / Client span / 显式注入）
+
 + `otelhttp.NewHandler`：自动创建 **SERVER span** 并执行 extract（从 `traceparent` 建立 parent）。
 + `otelhttp.NewTransport`：自动创建 **CLIENT span** 并注入 header（下游请求透传）。
 + `otel.GetTextMapPropagator().Inject(...)`：显式注入（双保险，确保下游收到 `traceparent`）。
 + `otlptracehttp.WithEndpointURL(otlpURL)`：OTLP/HTTP exporter 发送 traces（此处使用完整 URL）。([Go Packages](https://pkg.go.dev/go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp))
 
 ### 6.2 完整代码（`go-gateway/main.go`）
+
 ```go
 package main
 
@@ -805,13 +831,16 @@ func main() {
 ```
 
 ### 6.3 验证与日志观测
+
 + 访问 `/api/hello` 后，go 控制台日志应输出：`trace_id=... span_id=... traceparent_in=...`
 + 响应 JSON 中 `trace_id/span_id` 与后端 Trace 平台检索一致。
 
 ---
 
 ## 7. Python 服务（python-svc）Flask + OTel + OTLP + 透传
+
 ### 7.1 完整代码（`python-svc/app.py`）
+
 ```python
 import os
 import time
@@ -915,6 +944,7 @@ if __name__ == "__main__":
 ```
 
 #### OTLP 关键配置（diff 高亮）
+
 ```diff
  exporter = OTLPSpanExporter(
 -    endpoint=otlp_endpoint,
@@ -925,9 +955,9 @@ if __name__ == "__main__":
 ```
 
 > OTLP endpoint 的环境变量与 URL 规则参考 OTel 配置文档。([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/))
->
 
 ### 7.2 依赖（`python-svc/requirements.txt`）
+
 ```plain
 flask==3.0.3
 python-dotenv==1.0.1
@@ -941,13 +971,16 @@ opentelemetry-instrumentation-requests==0.48b0
 ```
 
 ### 7.3 验证
+
 + `FlaskInstrumentor`：应自动从 `traceparent` 建立 server span parent（注释已说明）。
 + `RequestsInstrumentor + propagate.inject`：下游到 Java 必须携带 `traceparent`。
 
 ---
 
 ## 8. Java 服务（java-svc）Spark + OTel Autoconfigure + 透传 + 日志 MDC
+
 ### 8.1 完整代码（`App.java`）
+
 ```java
 package com.example.javasvc;
 
@@ -1137,6 +1170,7 @@ public class App {
 ```
 
 #### Java 透传关键配置（diff 高亮）
+
 ```diff
 -Context parent = propagator.extract(Context.current(), req, SPARK_GETTER);
 +Context parent = propagator.extract(Context.current(), req, SPARK_GETTER); //  从 traceparent 建立 parent
@@ -1154,6 +1188,7 @@ public class App {
 ---
 
 ### 8.2 Logback JSON Pattern（`logback.xml`）
+
 ```xml
 <configuration>
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
@@ -1174,6 +1209,7 @@ public class App {
 + 该 pattern 依赖 `opentelemetry-logback-mdc-*` 将 Trace 信息写入 MDC（`%X{trace_id}` 等）。
 
 ### 8.3 Maven（`pom.xml`）
+
 ```xml
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -1271,15 +1307,18 @@ public class App {
 ```
 
 ### 8.4 验证
+
 + `/java/work` 的响应中应包含：
-    - `traceparent_in`（来自 Python）
-    - `traceparent_to_cpp`（注入后下发给 C++）
+  - `traceparent_in`（来自 Python）
+  - `traceparent_to_cpp`（注入后下发给 C++）
 + Java 控制台 `logWithSpan` 打印的 trace_id 应与链路一致。
 
 ---
 
 ## 9. C++ 服务（cpp-svc）httplib + opentelemetry-cpp + OTLP/HTTP + 透传
+
 ### 9.1 `CMakeLists.txt`
+
 ```cmake
 cmake_minimum_required(VERSION 3.20)
 project(cpp_svc CXX)
@@ -1318,6 +1357,7 @@ endforeach()
 ```
 
 ### 9.2 完整代码（`cpp-svc/main.cpp`）
+
 ```cpp
 #include <httplib.h>
 #include <nlohmann/json.hpp>
@@ -1686,6 +1726,7 @@ int main()
 ```
 
 #### C++ OTLP/HTTP exporter 关键点（diff 高亮）
+
 ```diff
 -opts.url = endpoint;
 +opts.url = endpoint; //  OTLP/HTTP traces endpoint（环境变量读取）
@@ -1699,15 +1740,18 @@ int main()
 ```
 
 ### 9.3 验证
+
 + `/cpp/work` 的 JSON 应显示：
-    - `traceparent_in` 不为空
-    - `trace_id_from_traceparent == trace_id`（同一 trace）
-    - `span_id_from_traceparent` 为 parent span（对照用）
+  - `traceparent_in` 不为空
+  - `trace_id_from_traceparent == trace_id`（同一 trace）
+  - `span_id_from_traceparent` 为 parent span（对照用）
 
 ---
 
 ## 10. 三件套联动：指标/日志/Trace 如何互相跳转定位
+
 ### 10.1 Trace → Logs
+
 **目标**：从 Trace 的某个 Span，快速找到对应服务的日志。
 
 + 必备：日志中必须包含 `trace_id`（最好也包含 `span_id`）。
@@ -1721,31 +1765,35 @@ int main()
 3. 在日志平台按 `trace_id:<value>` 过滤
 
 ### 10.2 Logs → Trace
+
 **目标**：从一条错误日志反查对应 Trace。
 
 + 日志字段携带 `trace_id` 后，日志平台可配置“跳转到 Trace”。
 + 若平台支持：可直接在日志 UI 中通过 `trace_id` 关联到 Trace 视图。
 
 ### 10.3 Metrics  Trace（Exemplar / 关联）
+
 常见可落地方式：
 
 1. **RED 指标（Rate/Errors/Duration）**：指标维度至少包含 `service.name`、`http.route`、`status_code` 等。
 2. **从指标图表下钻到 Trace**：
-    - 若平台支持 Exemplars：直连到对应 trace_id（需要 SDK/Collector 侧配置）
-    - 若不支持：指标告警触发后，以时间窗口 + 服务名 + 路由筛 trace，再用 trace_id 精确定位
+   - 若平台支持 Exemplars：直连到对应 trace_id（需要 SDK/Collector 侧配置）
+   - 若不支持：指标告警触发后，以时间窗口 + 服务名 + 路由筛 trace，再用 trace_id 精确定位
 
 > OTLP 指标与日志端点规则与 traces 同源：OTLP/HTTP 通常为 `/v1/metrics`、`/v1/logs`。([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/))
->
 
 ---
 
 ## 11. 常见问题与排障清单
+
 ### 11.1 前端未注入 traceparent
+
 + 检查 `tracing.enable=true`
 + 检查 `allowedUrls` 是否匹配（`/api/`）
 + 检查是否跨域：跨域需后端放行 `traceparent/tracestate` header，否则被 CORS 拦截。([阿里云帮助中心](https://help.aliyun.com/zh/arms/user-experience-monitoring/use-cases/trace-associated-with-rum-monitoring))
 
 ### 11.2 后端 Trace 断链（trace_id 变了）
+
 + Go：确认入口使用 `otelhttp.NewHandler`（extract 生效）
 + Go→Python：确认 `otelhttp.NewTransport` + 显式 `Inject`（双保险）
 + Python：确认 `FlaskInstrumentor` 生效 + `propagate.inject` 下发
@@ -1753,6 +1801,7 @@ int main()
 + C++：确认 `HttpTraceContext` propagator 已设置为 Global，并使用 carrier extract
 
 ### 11.3 OTLP 上报失败
+
 + 检查 `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` 是否为完整可达 URL
 + 检查鉴权 header（`OTEL_EXPORTER_OTLP_HEADERS`）在各语言是否实际注入（C++ 已 parse 并 insert）
 + 若使用“单一 ENDPOINT 自动拼接”，确认 SDK 行为：OTLP/HTTP 会构造信号专属 URL（例如 `/v1/traces`）。([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/))
@@ -1760,9 +1809,9 @@ int main()
 ---
 
 ## 12. 参考链接
+
 + ARMS：Web 端 RUM 关联前后端 Trace（tracing/allowedUrls/propagatorTypes/CORS 注意事项）([阿里云帮助中心](https://help.aliyun.com/zh/arms/user-experience-monitoring/use-cases/trace-associated-with-rum-monitoring))
 + OpenTelemetry：OTLP Exporter 环境变量与端点构造规则([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/))
 + OpenTelemetry：Traces 与 W3C TraceContext（traceparent）([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/signals/traces/))
 + Go：`otlptracehttp.WithEndpointURL` 行为说明（支持完整 URL + 环境变量默认）([Go Packages](https://pkg.go.dev/go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp))
 + 阿里云：OpenTelemetry 数据接入与配置（OTel → ARMS 接入思路）([阿里云帮助中心](https://help.aliyun.com/zh/arms/tracing-analysis/connect-opentelemetry-to-tracing-analysis))
-
