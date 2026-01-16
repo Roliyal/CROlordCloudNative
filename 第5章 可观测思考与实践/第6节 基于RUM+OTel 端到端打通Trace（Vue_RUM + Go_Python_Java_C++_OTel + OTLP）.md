@@ -263,14 +263,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 import ArmsRum from '@arms/rum-browser'
 
-/**
- * 根目录 .env 里已有：
- * VITE_ARMS_RUM_PID=...
- * VITE_ARMS_RUM_ENDPOINT=...
- * VITE_APP_VERSION=...
- *
- * Vite 只会把 VITE_ 前缀注入到前端环境。
- */
+
 const pid = import.meta.env.VITE_ARMS_RUM_PID
 const endpoint = import.meta.env.VITE_ARMS_RUM_ENDPOINT
 const appVersion = import.meta.env.VITE_APP_VERSION || 'dev'
@@ -1810,6 +1803,7 @@ int main()
 
 ## 12. 参考链接
 
++ CROLord 代码库([CROLord 代码库](https://github.com/Roliyal/CROlordCodelibrary/tree/main/Chapter6Custom/ARMS-Multilingual-Traceid))
 + ARMS：Web 端 RUM 关联前后端 Trace（tracing/allowedUrls/propagatorTypes/CORS 注意事项）([阿里云帮助中心](https://help.aliyun.com/zh/arms/user-experience-monitoring/use-cases/trace-associated-with-rum-monitoring))
 + OpenTelemetry：OTLP Exporter 环境变量与端点构造规则([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/sdk-configuration/otlp-exporter-configuration/))
 + OpenTelemetry：Traces 与 W3C TraceContext（traceparent）([OpenTelemetry 中文文档](https://opentelemetry.opendocs.io/docs/concepts/signals/traces/))
